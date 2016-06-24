@@ -1,0 +1,12 @@
+[package]
+name = "threshold_secret_sharing"
+version = "0.1.0"
+authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
+
+[dependencies]
+rand = "*"
+
+[dev_dependencies]
+primal = "*"
+time = "*"
+
