@@ -3,6 +3,9 @@ name = "threshold_secret_sharing"
 version = "0.1.0"
 authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
 
+[lib]
+crate-type = ["dylib"]
+
 [dependencies]
 rand = "*"
 
