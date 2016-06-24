@@ -25,8 +25,8 @@ impl ThresholdSecretSharing {
             threshold: threshold,
             parts: parts,
             prime: prime,
-        exps: exps,
-    }
+            exps: exps,
+        }
     }
 
     #[allow(dead_code)]
