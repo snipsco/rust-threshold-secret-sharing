@@ -43,11 +43,13 @@ pub struct ThresholdSecretSharing {
     exps: Vec<Vec<u64>>,
 }
 
+/*
 impl Drop for ThresholdSecretSharing {
     fn drop(&mut self) {
         println!("Hey ! hi have been dropped");
     }
 }
+*/
 
 impl ThresholdSecretSharing {
     pub fn new(parts: usize, threshold: usize, prime: u64) -> ThresholdSecretSharing {
