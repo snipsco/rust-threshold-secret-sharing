@@ -1,10 +1,7 @@
 [package]
 name = "threshold_secret_sharing"
 version = "0.1.0"
-authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
-
-#[lib]
-#crate-type = ["dylib"]
+authors = ["Morten Dahl <morten.dahl@snips.ai>", "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"]
 
 [dependencies]
 rand = "*"

@@ -1,40 +1,5 @@
 extern crate rand;
 
-#[no_mangle]
-pub extern "C" fn tss_create_context(parts: u64,
-                                     threshold: u64,
-                                     prime: u64)
-                                     -> *mut ThresholdSecretSharing {
-    let tss = Box::new(ThresholdSecretSharing::new(parts as usize, threshold as usize, prime));
-    Box::into_raw(tss)
-}
-
-#[no_mangle]
-pub extern "C" fn tss_destroy_context(ptr: *mut ThresholdSecretSharing) {
-    if ptr.is_null() {
-        return;
-    }
-    unsafe {
-        Box::from_raw(ptr);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn tss_generate_shares(ptr: *mut ThresholdSecretSharing,
-                                      secret: u64,
-                                      shares: *mut u64) {
-    let tss = unsafe {
-        assert!(!ptr.is_null());
-        &*ptr
-    };
-
-    let generated_shares = tss.encrypt(secret);
-    unsafe {
-        ::std::ptr::copy(generated_shares.as_ptr() as *mut u64, shares,
-        2*::std::mem::size_of::<u64>()*tss.parts);
-    }
-}
-
 #[derive(Debug)]
 pub struct ThresholdSecretSharing {
     threshold: usize,
@@ -42,14 +7,6 @@ pub struct ThresholdSecretSharing {
     prime: u64,
     exps: Vec<Vec<u64>>,
 }
-
-/*
-impl Drop for ThresholdSecretSharing {
-    fn drop(&mut self) {
-        println!("Hey ! hi have been dropped");
-    }
-}
-*/
 
 impl ThresholdSecretSharing {
     pub fn new(parts: usize, threshold: usize, prime: u64) -> ThresholdSecretSharing {
