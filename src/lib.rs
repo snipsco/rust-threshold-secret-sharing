@@ -5,8 +5,8 @@ pub type Share = (u64, u64);
 extern crate rand;
 
 mod numtheory;
-mod single;
-mod multi;
+mod shamir;
+mod packed;
 
-pub use single::*;
-pub use multi::*;
+pub use shamir::*;
+pub use packed::*;

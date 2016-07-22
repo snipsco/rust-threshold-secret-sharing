@@ -108,42 +108,14 @@ impl ShamirSecretSharing {
 
 
 #[test]
-fn single() {
+fn test_shamir() {
     let tss = ShamirSecretSharing::new(20, 5, 41);
 
     let secret = 1;
     let shares = tss.share(secret);
     let recon_secret = tss.reconstruct(&*shares);
-    println!("{:?}", recon_secret);
+    assert_eq!(recon_secret, secret);
 }
-
-// #[test]
-// fn multi() {
-//
-//     use super::MultiThresholdSecretSharing;
-//
-//     let prime = 41;
-//     let threshold = 5;
-//     let shares = 20;
-//     let tss = ThresholdSecretSharing::new(shares, threshold, prime);
-//
-//
-//     let secrets = vec![1, 2, 3];
-//     let shares = tss.share(secrets);
-//
-//     let recon_secrets = tss.reconstruct(shares);
-//
-//     assert_eq!(secrets, recon_secrets);
-// }
-
-
-
-
-
-
-
-
-
 
 #[test]
 fn wikipedia_example() {

@@ -4,7 +4,7 @@ extern crate primal;
 
 fn main() {
     // 
-    // use tss::SingleThresholdSecretSharing;
+    // use tss::ShamirSecretSharing;
     // // use tss::MultiThresholdSecretSharing;
     //
     // let prime = 41;

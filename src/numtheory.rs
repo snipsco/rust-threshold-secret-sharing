@@ -1,4 +1,7 @@
 
+#![allow(dead_code)]
+
+
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
         (a, 1, 0)
@@ -194,4 +197,20 @@ fn test_fft3_inverse() {
     let a_point = vec![45, 404, 407, 266, 377, 47, 158, 17, 20];
     let a_coef = fft3_inverse(a_point, omega, prime);
     assert_eq!(a_coef, vec![1,2,3,4,5,6,7,8,9])
+}
+
+pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
+    // TODO optimise with Horner's rule
+    coefficients.iter()
+       .enumerate()
+       .map(|(deg, coef)| (coef * mod_pow(point, deg as u32, prime)) % prime)
+       .fold(0, |a, b| (a + b) % prime)
+}
+
+#[test]
+fn test_mod_evaluate_polynomial() {
+    let poly = vec![1,2,3,4,5,6];
+    let point = 5;
+    let prime = 17;
+    assert_eq!(mod_evaluate_polynomial(&poly, point, prime), 4);
 }
