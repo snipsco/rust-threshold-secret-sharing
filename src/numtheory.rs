@@ -32,9 +32,32 @@ fn test_mod_inverse() {
 }
 
 
-pub fn mod_pow(x: i64, e: u32, prime: i64) -> i64 {
-    // TODO optmise by repeated-squaring
-    x.pow(e) % prime
+pub fn mod_pow(mut x: i64, mut e: u32, prime: i64) -> i64 {
+    let mut acc = 1;
+    while e > 0 {
+        if e % 2 == 0 {
+            // even
+            // no-op
+        }
+        else {
+            // odd
+            acc = (acc * x) % prime;
+        }
+        x = (x * x) % prime;  // waste one of these by having it here but code is simpler (tiny bit)
+        e = e >> 1;
+    }
+    acc
+}
+
+#[test]
+fn test_mod_pow() {
+    assert_eq!(mod_pow(2, 0, 17), 1);
+    assert_eq!(mod_pow(2, 3, 17), 8);
+    assert_eq!(mod_pow(2, 6, 17), 13);
+
+    assert_eq!(mod_pow(-3, 0, 17), 1);
+    assert_eq!(mod_pow(-3, 1, 17), -3);
+    assert_eq!(mod_pow(-3, 15, 17), -6);
 }
 
 
