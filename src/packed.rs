@@ -41,6 +41,18 @@ static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
 };
 
 #[allow(dead_code)]
+static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
+    threshold: 155,
+    share_count: 728,
+    secret_count: 100,
+    n: 256, // 100 + 155 + 1
+    m: 729, // 728 + 1
+    prime: 746497,
+    omega_n: 95660,
+    omega_m: 610121,
+};
+
+#[allow(dead_code)]
 static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 19682,
@@ -99,14 +111,6 @@ impl PackedSecretSharing {
         let points = fft3(coefficients, self.omega_m, self.prime);
         points
     }
-
-
-
-    // fn reconstruct(&self, shares: &[Vec<Share>]) -> Vec<Secret> {
-    //     shares.iter().map(|shares| {
-    //         self.tss.reconstruct(&*shares)
-    //     }).collect()
-    // }
 
 }
 
