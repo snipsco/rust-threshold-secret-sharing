@@ -43,7 +43,7 @@ pub fn fft2(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef
     } else {
-        // split a into b and c
+        // split A(x) into B(x) and C(x): A(x) = B(x^2) + x C(x^2)
         // TODO avoid copying
         let b_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 2 == 0 { Some(i) } else { None } ).collect();
         let c_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 2 == 1 { Some(i) } else { None } ).collect();
@@ -55,7 +55,7 @@ pub fn fft2(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
         // combine
         let len = a_coef.len();
         let half_len = len >> 1;
-        let mut a_point = vec![0; len];  // TODO unsafe { Vec.set_len() } trick
+        let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
         for i in 0..half_len {
             a_point[i]            = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
             a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
@@ -103,7 +103,7 @@ pub fn fft3(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef
     } else {
-        // split a into b and c
+        // split A(x) into B(x), C(x), and D(x): A(x) = B(x^3) + x C(x^3) + x^2 D(x^3)
         // TODO avoid copying
         let b_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 3 == 0 { Some(i) } else { None } ).collect();
         let c_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 3 == 1 { Some(i) } else { None } ).collect();
@@ -118,7 +118,7 @@ pub fn fft3(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
         // combine
         let len = a_coef.len();
         let third_len = len / 3;
-        let mut a_point = vec![0; len];  // TODO unsafe { Vec.set_len() } trick
+        let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
         for i in 0..third_len {
 
             let j = i;
