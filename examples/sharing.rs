@@ -1,9 +1,8 @@
 extern crate threshold_secret_sharing as tss;
 extern crate time;
-extern crate primal;
 
 fn main() {
-    // 
+    //
     // use tss::ShamirSecretSharing;
     // // use tss::MultiThresholdSecretSharing;
     //

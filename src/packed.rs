@@ -16,8 +16,7 @@ pub struct PackedSecretSharing {
     omega_m: i64
 }
 
-#[allow(dead_code)]
-static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
+pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 8,
     secret_count: 3,
@@ -28,8 +27,7 @@ static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
     omega_m: 150,
 };
 
-#[allow(dead_code)]
-static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
+pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 26,
     secret_count: 3,
@@ -40,8 +38,7 @@ static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
     omega_m: 17,
 };
 
-#[allow(dead_code)]
-static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
+pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 728,
     secret_count: 100,
@@ -52,8 +49,7 @@ static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
     omega_m: 610121,
 };
 
-#[allow(dead_code)]
-static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
+pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 19682,
     secret_count: 100,
@@ -86,7 +82,7 @@ impl PackedSecretSharing {
         // sample randomness
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::thread_rng();  // TODO use OsRng as dictated here https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
         let randomness: Vec<i64> = (0..self.threshold).map(|_| range.sample(&mut rng) as i64).collect();
         // recover polynomial
         let coefficients = self.recover_polynomial(secrets, randomness);

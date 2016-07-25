@@ -7,6 +7,4 @@ authors = ["Morten Dahl <morten.dahl@snips.ai>", "Mathieu Poumeyrol <mathieu.pou
 rand = "*"
 
 [dev_dependencies]
-primal = "*"
 time = "*"
-
