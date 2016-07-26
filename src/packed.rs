@@ -4,15 +4,15 @@ use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
 
 
-#[derive(Debug)]
+#[derive(Debug,Copy,Clone)]
 pub struct PackedSecretSharing {
-    threshold: usize,
-    share_count: usize,
-    secret_count: usize,
-    reconstruct_limit: usize, // = n
+    pub prime: i64,
+    pub threshold: usize,
+    pub share_count: usize,
+    pub secret_count: usize,
+    pub reconstruct_limit: usize, // = n
     n: usize,  // n = secret_count + threshold + 1
     m: usize,  // m = share_count + 1
-    prime: i64,
     omega_n: i64,
     omega_m: i64
 }
@@ -68,23 +68,19 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
 
 impl PackedSecretSharing {
 
-    pub fn share(&self, secrets: &Vec<i64>) -> Vec<(i64, i64)> {
+    pub fn share(&self, secrets: &[i64]) -> Vec<i64> {
         assert_eq!(secrets.len(), self.secret_count);
         // sample polynomial
         let mut poly = self.sample_polynomial(secrets);
         // .. extend it
         poly.extend( vec![0; self.m - self.n] );
         // .. evaluate it
-        let values = self.evaluate_polynomial(poly);
-        // .. zip the resulting values with the evaluation points
-        let points = (0..self.m).map(|e| mod_pow(self.omega_m, (e as u32), self.prime));
-        let shares: Vec<_> = points.zip(values).collect();
-        // .. and return the pairs
-        assert_eq!(shares.len(), self.m);
-        shares // TODO ignore first share (it's always zero)
+        let mut v = self.evaluate_polynomial(poly);
+        v.remove(0);
+        v
     }
 
-    fn sample_polynomial(&self, secrets: &Vec<i64>) -> Vec<i64> {
+    fn sample_polynomial(&self, secrets: &[i64]) -> Vec<i64> {
         // sample randomness
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
@@ -95,7 +91,7 @@ impl PackedSecretSharing {
         coefficients
     }
 
-    fn recover_polynomial(&self, secrets: &Vec<i64>, randomness: Vec<i64>) -> Vec<i64> {
+    fn recover_polynomial(&self, secrets: &[i64], randomness: Vec<i64>) -> Vec<i64> {
         // fix the value corresponding to point 1
         let mut values: Vec<i64> = vec![0];
         // let the subsequent values correspond to the secrets
@@ -114,15 +110,14 @@ impl PackedSecretSharing {
         points
     }
 
-    pub fn reconstruct(&self, shares: &[(i64, i64)]) -> Vec<i64> {
+    pub fn reconstruct(&self, indices:&[usize], shares: &[i64]) -> Vec<i64> {
+        assert_eq!(shares.len(), indices.len());
         assert!(shares.len() >= self.reconstruct_limit);
-        // TODO better way to do unzip?
-        let shares_points: Vec<i64> = shares.iter().map(|x| x.0).collect();
-        let shares_values: Vec<i64> = shares.iter().map(|x| x.1).collect();
+        let shares_points: Vec<i64> = indices.iter().map(|&x| mod_pow(self.omega_m, x as u32 + 1, self.prime)).collect();
         // interpolate using Newton's method
         use numtheory::{newton_interpolation_general, newton_evaluate};
         // TODO optimise by using Newton-equally-space variant
-        let poly = newton_interpolation_general(&shares_points, &shares_values, self.prime);
+        let poly = newton_interpolation_general(&shares_points, &shares, self.prime);
         // evaluate at omega_n points to recover secrets
         // TODO optimise to avoid re-computation of power
         let secrets = (1..self.n)
@@ -159,12 +154,12 @@ fn test_share() {
 
     // do sharing
     let secrets = vec![5,6,7];
-    let shares = pss.share(&secrets);
+    let mut shares = pss.share(&secrets);
 
     // manually recover secrets
-    let values: Vec<i64> = shares.iter().map({|&(_, v)| v}).collect();
     use numtheory::{fft3_inverse, mod_evaluate_polynomial};
-    let poly = fft3_inverse(values, PSS_4_26_3.omega_m, PSS_4_26_3.prime);
+    shares.insert(0, 0);
+    let poly = fft3_inverse(shares, PSS_4_26_3.omega_m, PSS_4_26_3.prime);
     let recovered_secrets: Vec<i64> = (1..secrets.len()+1)
         .map(|i| mod_evaluate_polynomial(&poly, mod_pow(PSS_4_26_3.omega_n, i as u32, PSS_4_26_3.prime), PSS_4_26_3.prime))
         .collect();
@@ -178,7 +173,7 @@ fn test_large_share() {
     let ref pss = PSS_155_19682_100;
     let secrets = vec![5 ; pss.secret_count];
     let shares = pss.share(&secrets);
-    assert_eq!(shares.len(), pss.share_count+1); // TODO remove 1
+    assert_eq!(shares.len(), pss.share_count);
 }
 
 #[test]
@@ -190,12 +185,13 @@ fn test_share_reconstruct() {
     use numtheory::positivise;
 
     // reconstruction must work for all shares
-    let all_shares = shares.clone();
-    let recovered_secrets = pss.reconstruct(&all_shares);
+    //    let all_shares:Vec<(usize, i64)> = shares.iter().cloned().enumerate().collect();
+    let indices:Vec<usize> = (0..shares.len()).collect();
+    let recovered_secrets = pss.reconstruct(&*indices, &shares);
     assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 
     // .. and for only sufficient shares
-    let sufficient_shares: Vec<(i64, i64)> = shares.clone().into_iter().take(pss.reconstruct_limit).collect();
-    let recovered_secrets = pss.reconstruct(&sufficient_shares);
+    let indices:Vec<usize> = (0..pss.reconstruct_limit).collect();
+    let recovered_secrets = pss.reconstruct(&*indices, &shares[0..pss.reconstruct_limit]);
     assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 }
