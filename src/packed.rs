@@ -9,6 +9,7 @@ pub struct PackedSecretSharing {
     threshold: usize,
     share_count: usize,
     secret_count: usize,
+    reconstruct_limit: usize, // = n
     n: usize,  // n = secret_count + threshold + 1
     m: usize,  // m = share_count + 1
     prime: i64,
@@ -20,6 +21,7 @@ pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 8,
     secret_count: 3,
+    reconstruct_limit: 8,
     n: 8, // 3 + 4 + 1
     m: 9, // 8 + 1
     prime: 433,
@@ -31,6 +33,7 @@ pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 26,
     secret_count: 3,
+    reconstruct_limit: 8,
     n: 8,  // 3 + 4 + 1
     m: 27, // 26 + 1
     prime: 433,
@@ -42,6 +45,7 @@ pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 728,
     secret_count: 100,
+    reconstruct_limit: 256,
     n: 256, // 100 + 155 + 1
     m: 729, // 728 + 1
     prime: 746497,
@@ -53,6 +57,7 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 19682,
     secret_count: 100,
+    reconstruct_limit: 256,
     n: 256,   // 100 + 155 + 1
     m: 19683, // 19682 + 1
     prime: 5038849,
@@ -64,6 +69,7 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
 impl PackedSecretSharing {
 
     pub fn share(&self, secrets: &Vec<i64>) -> Vec<(i64, i64)> {
+        assert_eq!(secrets.len(), self.secret_count);
         // sample polynomial
         let mut poly = self.sample_polynomial(secrets);
         // .. extend it
@@ -108,6 +114,25 @@ impl PackedSecretSharing {
         points
     }
 
+    pub fn reconstruct(&self, shares: &[(i64, i64)]) -> Vec<i64> {
+        assert!(shares.len() >= self.reconstruct_limit);
+        // TODO better way to do unzip?
+        let shares_points: Vec<i64> = shares.iter().map(|x| x.0).collect();
+        let shares_values: Vec<i64> = shares.iter().map(|x| x.1).collect();
+        // interpolate using Newton's method
+        use numtheory::{newton_interpolation_general, newton_evaluate};
+        // TODO optimise by using Newton-equally-space variant
+        let poly = newton_interpolation_general(&shares_points, &shares_values, self.prime);
+        // evaluate at omega_n points to recover secrets
+        // TODO optimise to avoid re-computation of power
+        let secrets = (1..self.n)
+            .map(|e| mod_pow(self.omega_n, e as u32, self.prime))
+            .map(|point| newton_evaluate(&poly, point, self.prime))
+            .take(self.secret_count)
+            .collect();
+        secrets
+    }
+
 }
 
 
@@ -142,10 +167,10 @@ fn test_share() {
     let poly = fft3_inverse(values, PSS_4_26_3.omega_m, PSS_4_26_3.prime);
     let recovered_secrets: Vec<i64> = (1..secrets.len()+1)
         .map(|i| mod_evaluate_polynomial(&poly, mod_pow(PSS_4_26_3.omega_n, i as u32, PSS_4_26_3.prime), PSS_4_26_3.prime))
-        .map(|secret| if secret < 0 { secret + PSS_4_26_3.prime } else { secret })
         .collect();
 
-    assert_eq!(recovered_secrets, secrets);
+    use numtheory::positivise;
+    assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 }
 
 #[test]
@@ -154,4 +179,23 @@ fn test_large_share() {
     let secrets = vec![5 ; pss.secret_count];
     let shares = pss.share(&secrets);
     assert_eq!(shares.len(), pss.share_count+1); // TODO remove 1
+}
+
+#[test]
+fn test_share_reconstruct() {
+    let ref pss = PSS_4_26_3;
+    let secrets = vec![5,6,7];
+    let shares = pss.share(&secrets);
+
+    use numtheory::positivise;
+
+    // reconstruction must work for all shares
+    let all_shares = shares.clone();
+    let recovered_secrets = pss.reconstruct(&all_shares);
+    assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
+
+    // .. and for only sufficient shares
+    let sufficient_shares: Vec<(i64, i64)> = shares.clone().into_iter().take(pss.reconstruct_limit).collect();
+    let recovered_secrets = pss.reconstruct(&sufficient_shares);
+    assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 }
