@@ -11,10 +11,10 @@ pub struct PackedSecretSharing {
     pub share_count: usize,
     pub secret_count: usize,
     pub reconstruct_limit: usize, // = n
-    n: usize,  // n = secret_count + threshold + 1
-    m: usize,  // m = share_count + 1
-    omega_n: i64,
-    omega_m: i64
+    pub n: usize,  // n = secret_count + threshold + 1
+    pub m: usize,  // m = share_count + 1
+    pub omega_n: i64,
+    pub omega_m: i64
 }
 
 pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
