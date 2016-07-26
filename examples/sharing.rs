@@ -1,5 +1,4 @@
 extern crate threshold_secret_sharing as tss;
-extern crate time;
 
 fn main() {
     //
