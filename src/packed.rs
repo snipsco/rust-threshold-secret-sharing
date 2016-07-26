@@ -199,3 +199,47 @@ fn test_share_reconstruct() {
     let recovered_secrets = pss.reconstruct(&indices, &shares[0..pss.reconstruct_limit]);
     assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 }
+
+#[test]
+fn test_share_additive_homomorphism() {
+    let ref pss = PSS_4_26_3;
+
+    let secrets_1 = vec![1,2,3];
+    let secrets_2 = vec![4,5,6];
+    let shares_1 = pss.share(&secrets_1);
+    let shares_2 = pss.share(&secrets_2);
+
+    // add shares pointwise
+    let shares_sum: Vec<i64> = shares_1.iter().zip(shares_2).map(|(a, b)| (a + b) % pss.prime).collect();
+
+    // reconstruct sum, using same reconstruction limit
+    let reconstruct_limit = pss.reconstruct_limit;
+    let indices: Vec<usize> = (0..reconstruct_limit).collect();
+    let shares = &shares_sum[0..reconstruct_limit];
+    let recovered_secrets = pss.reconstruct(&indices, shares);
+
+    use numtheory::positivise;
+    assert_eq!(positivise(&recovered_secrets, pss.prime), vec![5,7,9]);
+}
+
+#[test]
+fn test_share_multiplicative_homomorphism() {
+    let ref pss = PSS_4_26_3;
+
+    let secrets_1 = vec![1,2,3];
+    let secrets_2 = vec![4,5,6];
+    let shares_1 = pss.share(&secrets_1);
+    let shares_2 = pss.share(&secrets_2);
+
+    // multiply shares pointwise
+    let shares_product: Vec<i64> = shares_1.iter().zip(shares_2).map(|(a, b)| (a * b) % pss.prime).collect();
+
+    // reconstruct product, using double reconstruction limit (minus one)
+    let reconstruct_limit = pss.reconstruct_limit*2-1;
+    let indices: Vec<usize> = (0..reconstruct_limit).collect();
+    let shares = &shares_product[0..reconstruct_limit];
+    let recovered_secrets = pss.reconstruct(&indices, shares);
+
+    use numtheory::positivise;
+    assert_eq!(positivise(&recovered_secrets, pss.prime), vec![4,10,18]);
+}
