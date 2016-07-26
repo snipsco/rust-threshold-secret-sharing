@@ -72,19 +72,24 @@ impl PackedSecretSharing {
         assert_eq!(secrets.len(), self.secret_count);
         // sample polynomial
         let mut poly = self.sample_polynomial(secrets);
-        // .. extend it
+        // .. and extend it
         poly.extend( vec![0; self.m - self.n] );
-        // .. evaluate it
-        let mut v = self.evaluate_polynomial(poly);
-        v.remove(0);
-        v
+        // evaluate polynomial to generate shares
+        let mut shares = self.evaluate_polynomial(poly);
+        // .. but remove first element since it should not be used as a share (it's always 1)
+        shares.remove(0);
+        // return
+        assert_eq!(shares.len(), self.share_count);
+        shares
     }
 
     fn sample_polynomial(&self, secrets: &[i64]) -> Vec<i64> {
         // sample randomness
+        //  - for cryptographic use we should use OsRng as dictated here
+        //    https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
-        let mut rng = rand::thread_rng();  // TODO use OsRng as dictated here https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
+        let mut rng = rand::OsRng::new().unwrap();
         let randomness: Vec<i64> = (0..self.threshold).map(|_| range.sample(&mut rng) as i64).collect();
         // recover polynomial
         let coefficients = self.recover_polynomial(secrets, randomness);
@@ -100,17 +105,17 @@ impl PackedSecretSharing {
         values.extend(randomness);
         // run backward FFT to recover polynomial in coefficient representation
         assert_eq!(values.len(), self.n);
-        let coefficients = fft2_inverse(values, self.omega_n, self.prime);
+        let coefficients = fft2_inverse(&values, self.omega_n, self.prime);
         coefficients
     }
 
     fn evaluate_polynomial(&self, coefficients: Vec<i64>) -> Vec<i64> {
         assert_eq!(coefficients.len(), self.m);
-        let points = fft3(coefficients, self.omega_m, self.prime);
+        let points = fft3(&coefficients, self.omega_m, self.prime);
         points
     }
 
-    pub fn reconstruct(&self, indices:&[usize], shares: &[i64]) -> Vec<i64> {
+    pub fn reconstruct(&self, indices: &[usize], shares: &[i64]) -> Vec<i64> {
         assert_eq!(shares.len(), indices.len());
         assert!(shares.len() >= self.reconstruct_limit);
         let shares_points: Vec<i64> = indices.iter().map(|&x| mod_pow(self.omega_m, x as u32 + 1, self.prime)).collect();
@@ -159,7 +164,7 @@ fn test_share() {
     // manually recover secrets
     use numtheory::{fft3_inverse, mod_evaluate_polynomial};
     shares.insert(0, 0);
-    let poly = fft3_inverse(shares, PSS_4_26_3.omega_m, PSS_4_26_3.prime);
+    let poly = fft3_inverse(&shares, PSS_4_26_3.omega_m, PSS_4_26_3.prime);
     let recovered_secrets: Vec<i64> = (1..secrets.len()+1)
         .map(|i| mod_evaluate_polynomial(&poly, mod_pow(PSS_4_26_3.omega_n, i as u32, PSS_4_26_3.prime), PSS_4_26_3.prime))
         .collect();
@@ -185,13 +190,12 @@ fn test_share_reconstruct() {
     use numtheory::positivise;
 
     // reconstruction must work for all shares
-    //    let all_shares:Vec<(usize, i64)> = shares.iter().cloned().enumerate().collect();
-    let indices:Vec<usize> = (0..shares.len()).collect();
-    let recovered_secrets = pss.reconstruct(&*indices, &shares);
+    let indices: Vec<usize> = (0..shares.len()).collect();
+    let recovered_secrets = pss.reconstruct(&indices, &shares);
     assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 
     // .. and for only sufficient shares
-    let indices:Vec<usize> = (0..pss.reconstruct_limit).collect();
-    let recovered_secrets = pss.reconstruct(&*indices, &shares[0..pss.reconstruct_limit]);
+    let indices: Vec<usize> = (0..pss.reconstruct_limit).collect();
+    let recovered_secrets = pss.reconstruct(&indices, &shares[0..pss.reconstruct_limit]);
     assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
 }

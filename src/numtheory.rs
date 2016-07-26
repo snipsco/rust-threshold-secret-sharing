@@ -64,10 +64,9 @@ fn test_mod_pow() {
 }
 
 
-// TODO don't insist on vectors as input (slices would be better)
-pub fn fft2(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
+pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
-        a_coef
+        a_coef.to_vec()
     } else {
         // split A(x) into B(x) and C(x): A(x) = B(x^2) + x C(x^2)
         // TODO avoid copying
@@ -75,8 +74,8 @@ pub fn fft2(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
         let c_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 2 == 1 { Some(i) } else { None } ).collect();
 
         // recurse
-        let b_point = fft2(b_coef, mod_pow(omega, 2, prime), prime);
-        let c_point = fft2(c_coef, mod_pow(omega, 2, prime), prime);
+        let b_point = fft2(&b_coef, mod_pow(omega, 2, prime), prime);
+        let c_point = fft2(&c_coef, mod_pow(omega, 2, prime), prime);
 
         // combine
         let len = a_coef.len();
@@ -92,7 +91,7 @@ pub fn fft2(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
     }
 }
 
-pub fn fft2_inverse(a_point: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
+pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let omega_inv = mod_inverse(omega, prime);
     let len = a_point.len();
     let len_inv = mod_inverse(len as i64, prime);
@@ -108,7 +107,7 @@ fn test_fft2() {
     let omega = 354;
 
     let a_coef = vec![1,2,3,4,5,6,7,8];
-    let a_point = fft2(a_coef, omega, prime);
+    let a_point = fft2(&a_coef, omega, prime);
     assert_eq!(a_point, vec![36, -130, -287, 3, -4, 422, 279, -311])
 }
 
@@ -119,15 +118,14 @@ fn test_fft2_inverse() {
     let omega = 354;
 
     let a_point = vec![36, -130, -287, 3, -4, 422, 279, -311];
-    let a_coef = fft2_inverse(a_point, omega, prime);
+    let a_coef = fft2_inverse(&a_point, omega, prime);
     assert_eq!(positivise(&a_coef, prime), vec![1,2,3,4,5,6,7,8])
 }
 
 
-// TODO don't insist on vectors as input (slices would be better)
-pub fn fft3(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
+pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
-        a_coef
+        a_coef.to_vec()
     } else {
         // split A(x) into B(x), C(x), and D(x): A(x) = B(x^3) + x C(x^3) + x^2 D(x^3)
         // TODO avoid copying
@@ -137,9 +135,9 @@ pub fn fft3(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
 
         // recurse
         let omega_cubed = mod_pow(omega, 3, prime);
-        let b_point = fft3(b_coef, omega_cubed, prime);
-        let c_point = fft3(c_coef, omega_cubed, prime);
-        let d_point = fft3(d_coef, omega_cubed, prime);
+        let b_point = fft3(&b_coef, omega_cubed, prime);
+        let c_point = fft3(&c_coef, omega_cubed, prime);
+        let d_point = fft3(&d_coef, omega_cubed, prime);
 
         // combine
         let len = a_coef.len();
@@ -168,7 +166,7 @@ pub fn fft3(a_coef: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
     }
 }
 
-pub fn fft3_inverse(a_point: Vec<i64>, omega: i64, prime: i64) -> Vec<i64> {
+pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let omega_inv = mod_inverse(omega, prime);
     let len = a_point.len();
     let len_inv = mod_inverse(len as i64, prime);
@@ -184,7 +182,7 @@ fn test_fft3() {
     let omega = 150;
 
     let a_coef = vec![1,2,3,4,5,6,7,8,9];
-    let a_point = fft3(a_coef, omega, prime);
+    let a_point = fft3(&a_coef, omega, prime);
     assert_eq!(a_point, vec![45, 404, 407, 266, 377, 47, 158, 17, 20])
 }
 
@@ -195,7 +193,7 @@ fn test_fft3_inverse() {
     let omega = 150;
 
     let a_point = vec![45, 404, 407, 266, 377, 47, 158, 17, 20];
-    let a_coef = fft3_inverse(a_point, omega, prime);
+    let a_coef = fft3_inverse(&a_point, omega, prime);
     assert_eq!(a_coef, vec![1,2,3,4,5,6,7,8,9])
 }
 
@@ -281,7 +279,7 @@ fn test_compute_newton_coefficients() {
     let values = vec![8, 16, 4, 13, 16];
     let prime = 17;
 
-    let coefficients = compute_newton_coefficients(&*points, &*values, prime);
+    let coefficients = compute_newton_coefficients(&points, &values, prime);
     assert_eq!(coefficients, vec![8,8,-10,4,0]);
 }
 
@@ -291,9 +289,6 @@ pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
         .map(|&value| if value < 0 { value + prime } else { value })
         .collect()
 }
-
-
-
 
 pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
     // TODO optimise with Horner's rule
