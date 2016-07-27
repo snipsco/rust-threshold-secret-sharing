@@ -1,2 +1,0 @@
-[target.arm-linux-androideabi]
-linker = "./android-linker.sh"
