@@ -4,7 +4,7 @@ pub type Share = (u64, u64);
 
 extern crate rand;
 
-mod numtheory;
+pub mod numtheory;
 mod shamir;
 mod packed;
 
