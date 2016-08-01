@@ -1,29 +1,29 @@
 # Threshold Secret Sharing
 
-`threshold-secret-sharing` is a pure Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing), 
+Pure Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing),
 offering efficient share generation and reconstruction for both traditional Shamir sharing and packet sharing.
 
 
-## Installation
+# Installation
 
-### Cargo
+## Cargo
 ```toml
 [dependencies]
 threshold_secret_sharing = "0.1"
 ```
 
-### Manually run from source code
+## Manually run from source code
 ```bash
 git clone https://github.com/snipsco/rust-threshold-secret-sharing
 cd rust-threshold-secret-sharing/
 cargo build
 ```
 
-## Examples
+# Examples
 
-### Shamir sharing
+## Shamir sharing
 
-### Packed sharing
+## Packed sharing
 In this example we're going to pack 3 secrets into each share, using a reconstruction threshold of 4 out of a total of 8 shares.
 ```rust
 let ref pss = tss::PSS_4_8_3;
@@ -31,7 +31,7 @@ let secrets = vec![1, 2, 3];
 let shares = pss.share(&secrets);
 ```
 
-### Homomorphic properties
+## Homomorphic properties
 In this example we're going to pack 3 secrets into each share, using a reconstruction threshold of 4 out of a total of 8 shares.
 ```rust
 let ref pss = tss::PSS_4_8_3;
