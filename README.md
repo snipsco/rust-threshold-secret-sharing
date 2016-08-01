@@ -6,6 +6,12 @@ offering efficient share generation and reconstruction for both traditional Sham
 
 ## Installation
 
+### Cargo
+```toml
+[dependencies]
+threshold_secret_sharing = "0.1"
+```
+
 ### Manually run from source code
 ```bash
 git clone https://github.com/snipsco/rust-threshold-secret-sharing
