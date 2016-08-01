@@ -1,9 +1,23 @@
+
 [package]
 name = "threshold_secret_sharing"
 version = "0.1.0"
-authors = ["Morten Dahl <morten.dahl@snips.ai>", "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"]
+authors = [
+  "Morten Dahl",
+  "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"
+]
+description = "Rust library for threshold secret sharing"
+keywords = [
+  "threshold secret sharing",
+  "secret sharing",
+  "Shamir secret sharing",
+  "packed secret sharing",
+  "cryptography",
+  "crypto"
+]
+homepage = "https://github.com/snipsco/crypto-threshold-secret-sharing"
+documentation = ""
+license = ""
 
 [dependencies]
-rand = "*"
-
-[dev_dependencies]
+rand = "0.3.*"
