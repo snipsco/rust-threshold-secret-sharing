@@ -1,147 +1,93 @@
-
 use rand;
-use super::{Secret, Share};
 use numtheory::*;
 
 
 #[derive(Debug)]
 pub struct ShamirSecretSharing {
-    threshold: usize,
-    parts: usize,
-    prime: u64,
-    exps: Vec<Vec<u64>>,
+    pub threshold: usize,
+    pub parts: usize,
+    pub prime: i64,
 }
 
+pub static SHAMIR_5_20: ShamirSecretSharing = ShamirSecretSharing {
+    threshold: 5,
+    parts: 20,
+    prime: 41,
+};
 
 impl ShamirSecretSharing {
 
-    pub fn new(parts: usize, threshold: usize, prime: u64) -> ShamirSecretSharing {
-        let exps = (1..parts + 1)
-            .map(|x| {
-                let mut column = Vec::with_capacity(threshold);
-                column.push(1);
-                while column.len() < threshold {
-                    let previous = *column.last().unwrap();
-                    column.push((previous * x as u64) % prime);
-                }
-                column
-            })
-            .collect();
-        ShamirSecretSharing {
-            threshold: threshold,
-            parts: parts,
-            prime: prime,
-            exps: exps,
-        }
+    pub fn share(&self, secret: i64) -> Vec<i64> {
+        let poly = self.sample_polynomial(secret);
+        self.evaluate_polynomial(&poly)
     }
 
-    pub fn share(&self, secret: Secret) -> Vec<Share> {
-        let coefficients = self.sample_polynomial(secret);
-        self.evaluate_polynomial(coefficients)
+    pub fn reconstruct(&self, indices: &[usize], shares: &[i64]) -> i64 {
+        assert!(shares.len() == indices.len());
+        assert!(shares.len() >= self.threshold);
+        // add one to indices to get points
+        let points: Vec<i64> = indices.iter().map(|&i| (i as i64) + 1i64).collect();
+        lagrange_interpolation_at_zero(&*points, &shares, self.prime)
     }
 
-    pub fn reconstruct(&self, shares: &[Share]) -> Secret {
-        let (shares, _) = shares.split_at(self.threshold);
-        let prime = self.prime as i64;
-        let mut acc = 0i64;
-        for j in 0..self.threshold {
-            let xj = shares[j].0 as i64;
-            let mut num = 1i64;
-            let mut denum = 1i64;
-            for m in 0..self.threshold {
-                if j != m {
-                    let xm = shares[m].0 as i64;
-                    num = (num * xm) % prime;
-                    denum = (denum * (xm - xj)) % prime;
-                }
-            }
-            acc = (prime + acc +
-                   (shares[j].1 as i64 * num) % prime * mod_inverse(denum, prime)) %
-                  prime;
-        }
-        acc as u64
-    }
-
-    fn sample_polynomial(&self, zero: u64) -> Vec<u64> {
-        // fix the first coefficient
-        let mut coefficients = vec![zero];
+    fn sample_polynomial(&self, zero_value: i64) -> Vec<i64> {
+        // fix the first coefficient (corresponding to the evaluation at zero)
+        let mut coefficients = vec![zero_value];
         // sample the remaining coefficients randomly
+        //  - use secure randomness as per https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
-        let mut rng = rand::thread_rng();
-        let random_coefficients: Vec<u64> = (1..self.threshold).map(|_| range.sample(&mut rng)).collect();
+        let mut rng = rand::OsRng::new().unwrap();
+        let random_coefficients: Vec<i64> = (1..self.threshold).map(|_| range.sample(&mut rng)).collect();
         coefficients.extend(random_coefficients);
         // return
-        return coefficients;
+        coefficients
     }
 
-    fn evaluate_polynomial(&self, coefficients: Vec<u64>) -> Vec<(u64, u64)> {
-        // TODO optimise with Horner's rule
+    fn evaluate_polynomial(&self, coefficients: &[i64]) -> Vec<i64> {
+        // evaluate at all points
         (1..self.parts + 1)
-            .map(|x| x as u64)
-            .map(|x| {
-                (x,
-                 coefficients.iter()
-                    .enumerate()
-                    .map(|(deg, coef)| coef * self.optimized_pow(x, deg as u64))
-                    .fold(0, |a, b| (a + b) % self.prime))
-            })
+            .map(|point| mod_evaluate_polynomial(coefficients, point as i64, self.prime))
             .collect()
-    }
-
-    #[allow(dead_code)]
-    fn pow(x: u64, e: u64, prime: u64) -> u64 {
-        (0..e).fold(1, |a, _| (a * x) % prime)
-    }
-
-    fn optimized_pow(&self, x: u64, e: u64) -> u64 {
-        if e == 0 {
-            1
-        } else {
-            self.exps[x as usize - 1][e as usize]
-        }
     }
 
 }
 
 
-
-
 #[test]
-fn test_shamir() {
-    let tss = ShamirSecretSharing::new(20, 5, 41);
-
-    let secret = 1;
-    let shares = tss.share(secret);
-    let recon_secret = tss.reconstruct(&*shares);
-    assert_eq!(recon_secret, secret);
+fn test_evaluate_polynomial() {
+    let ref tss = SHAMIR_5_20;
+    let poly = vec![1,2,0];
+    let values = tss.evaluate_polynomial(&poly);
+    assert_eq!(*values, [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 0]);
 }
 
 #[test]
 fn wikipedia_example() {
-    let secret = 1234;
-    let prime = 1613;
-    let threshold = 3;
-    let parts = 6;
+    let tss = ShamirSecretSharing {
+        threshold: 3,
+        parts: 6,
+        prime: 1613
+    };
 
-    let algo = ShamirSecretSharing::new(parts, threshold, prime);
+    let shares = tss.evaluate_polynomial(&[1234, 166, 94]);
+    assert_eq!(&*shares, &[1494, 329, 965, 176, 1188, 775]);
 
-    let shares = algo.evaluate_polynomial(vec![1234, 166, 94]);
-    assert_eq!(&*shares,
-               &[(1, 1494), (2, 329), (3, 965), (4, 176), (5, 1188), (6, 775)]);
-
-    assert_eq!(algo.reconstruct(&shares[0..3]), secret);
-    assert_eq!(algo.reconstruct(&shares[1..4]), secret);
-    assert_eq!(algo.reconstruct(&shares[2..5]), secret);
+    assert_eq!(tss.reconstruct(&[0, 1, 2], &shares[0..3]), 1234);
+    assert_eq!(tss.reconstruct(&[1, 2, 3], &shares[1..4]), 1234);
+    assert_eq!(tss.reconstruct(&[2, 3, 4], &shares[2..5]), 1234);
 }
 
 #[test]
-fn test_pow() {
-    assert_eq!(ShamirSecretSharing::pow(2, 4, 11), 5);
-}
-
-#[test]
-fn test_optimized_pow() {
-    let tss = ShamirSecretSharing::new(10, 5, 8191);
-    assert_eq!(ShamirSecretSharing::pow(2, 4, 8191), tss.optimized_pow(2, 4));
+fn test_shamir() {
+    let tss = ShamirSecretSharing {
+        threshold: 3,
+        parts: 6,
+        prime: 41
+    };
+    let secret = 1;
+    let shares = tss.share(secret);
+    assert_eq!(tss.reconstruct(&[0, 1, 2],    &shares[0..3]), secret);
+    assert_eq!(tss.reconstruct(&[1, 2, 3],    &shares[1..4]), secret);
+    assert_eq!(tss.reconstruct(&[2, 3, 4, 5], &shares[2..6]), secret);
 }
