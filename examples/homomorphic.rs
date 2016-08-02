@@ -2,7 +2,7 @@ extern crate threshold_secret_sharing as tss;
 
 fn main() {
 
-    let ref pss = tss::PSS_4_26_3;
+    let ref pss = tss::packed::PSS_4_26_3;
     println!("\
     Using parameters that: \n \
      - allow {} values to be packed together \n \
