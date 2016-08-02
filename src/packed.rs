@@ -115,7 +115,7 @@ impl PackedSecretSharing {
     }
 
     pub fn reconstruct(&self, indices: &[usize], shares: &[i64]) -> Vec<i64> {
-        assert_eq!(shares.len(), indices.len());
+        assert!(shares.len() == indices.len());
         assert!(shares.len() >= self.reconstruct_limit);
         let shares_points: Vec<i64> = indices.iter().map(|&x| mod_pow(self.omega_m, x as u32 + 1, self.prime)).collect();
         // interpolate using Newton's method

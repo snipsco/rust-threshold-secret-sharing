@@ -198,6 +198,28 @@ fn test_fft3_inverse() {
 }
 
 
+pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64) -> i64 {
+    assert_eq!(points.len(), values.len());
+    // Lagrange interpolation for point 0
+    let mut acc = 0i64;
+    for i in 0..values.len() {
+        let xi = points[i];
+        let yi = values[i];
+        let mut num = 1i64;
+        let mut denum = 1i64;
+        for j in 0..values.len() {
+            if j != i {
+                let xj = points[j];
+                num = (num * xj) % prime;
+                denum = (denum * (xj - xi)) % prime;
+            }
+        }
+        acc = (acc + yi * num * mod_inverse(denum, prime)) % prime;
+    }
+    acc
+}
+
+
 pub struct NewtonPolynomial<'a> {
     points: &'a[i64],
     coefficients: Vec<i64>
@@ -290,12 +312,31 @@ pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
         .collect()
 }
 
-pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
-    // TODO optimise with Horner's rule
+// TODO deprecate
+fn mod_evaluate_polynomial_naive(coefficients: &[i64], point: i64, prime: i64) -> i64 {
+    // evaluate naively
     coefficients.iter()
        .enumerate()
        .map(|(deg, coef)| (coef * mod_pow(point, deg as u32, prime)) % prime)
        .fold(0, |a, b| (a + b) % prime)
+}
+
+#[test]
+fn test_mod_evaluate_polynomial_naive() {
+    let poly = vec![1,2,3,4,5,6];
+    let point = 5;
+    let prime = 17;
+    assert_eq!(mod_evaluate_polynomial_naive(&poly, point, prime), 4);
+}
+
+pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
+    // evaluate using Horner's rule
+    //  - to combine with fold we consider the coefficients in reverse order
+    let mut reversed_coefficients = coefficients.iter().rev();
+    // manually split due to fold insisting on an initial value
+    let head = *reversed_coefficients.next().unwrap();
+    let tail = reversed_coefficients;
+    tail.fold(head, |partial, coef| (partial * point + coef) % prime)
 }
 
 #[test]
