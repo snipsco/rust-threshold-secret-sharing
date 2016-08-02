@@ -21,7 +21,14 @@ cargo build
 
 # Examples
 
+## Basic use
+```rust
+extern crate threshold_secret_sharing as tss;
+```
+TODO
+
 ## Shamir sharing
+TODO
 
 ## Packed sharing
 In this example we're going to pack 3 secrets into each share, using a reconstruction threshold of 4 out of a total of 8 shares.
@@ -43,7 +50,9 @@ let secrets_2 = vec![4, 5, 6];
 let shares_2 = pss.share(&secrets_2);
 
 // sum the shares pointwise
-let shares_sum: Vec<_> = shares_1.iter().zip(&shares_2).map(|(a, b)| (a + b) % pss.prime).collect();
+let shares_sum: Vec<_> = shares_1.iter().zip(&shares_2)
+  .map(|(a, b)| (a + b) % pss.prime)
+  .collect();
 
 let indices_sum: Vec<usize> = (0..shares_sum.len()).collect();
 let secrets_sum = pss.reconstruct(indices_sum, shares_sum);

@@ -1,4 +1,3 @@
-
 // use super::{Secret, Share};
 use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
