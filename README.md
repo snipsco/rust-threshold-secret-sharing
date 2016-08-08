@@ -2,13 +2,16 @@
 
 Efficient pure-Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing), offering efficient share generation and reconstruction for both traditional Shamir sharing and packet sharing. For now, secrets and shares are fixed as prime field elements represented by `i64` values.
 
+
 # Installation
+
 
 ## Cargo
 ```toml
 [dependencies]
 threshold_secret_sharing = "0.1"
 ```
+
 
 ## GitHub
 ```bash
@@ -17,12 +20,14 @@ cd rust-threshold-secret-sharing
 cargo build --release
 ```
 
+
 # Examples
 Several examples are included in the `examples/` directory. Run each with `cargo` using e.g.
 ```sh
 cargo run --example shamir
 ```
 for the Shamir example below.
+
 
 ## Shamir sharing
 Using the Shamir scheme is relatively straight-forward.
@@ -55,6 +60,7 @@ fn main() {
   assert_eq!(recovered_secret, 5);
 }
 ```
+
 
 ## Packed sharing
 If many secrets are to be secret shared, it may be beneficial to use the packed scheme where several secrets are packed into each share. While still very computational efficient, one downside is that the parameters are somewhat restricted.
@@ -89,6 +95,7 @@ fn main() {
   assert_eq!(recovered_secrets, vec![1, 2, 3]);
 }
 ```
+
 
 ## Homomorphic properties
 Both the Shamir and the packed scheme enjoy certain homomorphic properties: shared secrets can be transformed by manipulating the shares. Both addition and multiplications work, yet notice that the reconstruction limit in the case of multiplication goes up by a factor of two for each application.
@@ -128,3 +135,13 @@ While it's straight-forward to instantiate the Shamir scheme, as mentioned above
 cargo build --features paramgen
 ```
 which also adds several extra dependencies.
+
+
+# Performance
+So far most performance efforts has been focused on share generation for the packed scheme, with some obvious enhancements for reconstruction in the process of being implemented. As an example, generating approximately 20,000 shares for 100 secrets with the packed scheme runs in around 33ms on a modern laptop, and in TODO ms on a Raspberry Pi 3.
+
+These numbers were obtained by running
+```
+cargo bench
+```
+using the nightly toolchain.
