@@ -4,7 +4,7 @@ use numtheory::*;
 
 #[derive(Debug)]
 pub struct ShamirSecretSharing {
-    pub threshold: usize,
+    pub threshold: usize,  // TODO this is really the reconstruction limit, not threshold
     pub parts: usize,
     pub prime: i64,
 }

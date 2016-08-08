@@ -3,7 +3,7 @@ extern crate threshold_secret_sharing as tss;
 fn main() {
 
     let ref tss = tss::shamir::ShamirSecretSharing {
-        threshold: 5,
+        threshold: 10,
         parts: 20,
         prime: 41  // any large enough prime will do
     };

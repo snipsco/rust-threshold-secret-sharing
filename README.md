@@ -1,8 +1,6 @@
 # Threshold Secret Sharing
 
-Pure Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing),
-offering efficient share generation and reconstruction for both traditional Shamir sharing and packet sharing.
-
+Efficient pure-Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing), offering efficient share generation and reconstruction for both traditional Shamir sharing and packet sharing. For now, secrets and shares are fixed as prime field elements represented by `i64` values.
 
 # Installation
 
@@ -12,49 +10,114 @@ offering efficient share generation and reconstruction for both traditional Sham
 threshold_secret_sharing = "0.1"
 ```
 
-## Manually run from source code
+## GitHub
 ```bash
 git clone https://github.com/snipsco/rust-threshold-secret-sharing
-cd rust-threshold-secret-sharing/
-cargo build
+cd rust-threshold-secret-sharing
+cargo build --release
 ```
 
 # Examples
-
-## Basic use
-```rust
-extern crate threshold_secret_sharing as tss;
+Several examples are included in the `examples/` directory. Run each with `cargo` using e.g.
+```sh
+cargo run --example shamir
 ```
-TODO
+for the Shamir example below.
 
 ## Shamir sharing
-TODO
+Using the Shamir scheme is relatively straight-forward.
+
+When choosing parameters, `threshold` and `parts` must be chosen to satisfy security requirements, and `prime` must be large enough to correctly encode the value to be shared (and such that `prime >= parts + 1`). The reconstruction limit is implicitly defined to be `threshold + 1`.
+
+When reconstructing the secret, indices must be explicitly provided to identify the shares; these correspond to the indices the shares had in the array returned by `share()`.
+
+```rust
+extern crate threshold_secret_sharing as tss;
+
+fn main() {
+  // create instance of the Shamir scheme
+  let ref tss = tss::shamir::ShamirSecretSharing {
+    threshold: 9,  // security threshold
+    parts: 20,      // number of shares to generate
+    prime: 41       // prime field to use
+  };
+
+  // generate shares for secret
+  let secret = 5;
+  let all_shares = tss.share(secret);
+
+  // artificially remove some of the shares: keep only the first 10
+  let indices: Vec<usize> = (0..10).collect();
+  let shares = &all_shares[0..10];
+
+  // reconstruct using remaining subset of shares
+  let recovered_secret = tss.reconstruct(&indices, shares);
+  assert_eq!(recovered_secret, 5);
+}
+```
 
 ## Packed sharing
-In this example we're going to pack 3 secrets into each share, using a reconstruction threshold of 4 out of a total of 8 shares.
+If many secrets are to be secret shared, it may be beneficial to use the packed scheme where several secrets are packed into each share. While still very computational efficient, one downside is that the parameters are somewhat restricted.
+
+Specifically, the parameters are split in *scheme parameters* and *implementation parameters*:
+- the former, like in Shamir sharing, determines the abstract properties of the scheme, yet now also with a `secret_count` specifying how many secrets are to be packed into each share; the reconstruction limit is implicitly defined as `secret_count + threshold + 1`
+- the latter is related to the implementation (currently based on the Fast Fourier Transform) and requires not only a `prime` specifying the field, but also two principal roots of unity within that field, which must be respectively a power of 2 and a power of 3
+
+Due to this increased complexity, providing helper functions for finding suitable parameters are in progress. For now, a few fixed fields are included in the `packed` module as illustrated in the example below:
+
+- `PSS_4_8_3`, `PSS_4_26_3`, `PSS_155_728_100`, `PSS_155_19682_100`
+
+with format `PSS_T_N_D` for sharing `D` secrets into `N` shares with a threshold of `T`.
+
 ```rust
-let ref pss = tss::PSS_4_8_3;
-let secrets = vec![1, 2, 3];
-let shares = pss.share(&secrets);
+extern crate threshold_secret_sharing as tss;
+
+fn main() {
+  // use predefined parameters
+  let ref tss = tss::packed::PSS_4_26_3;
+
+  // generate shares for a vector of secrets
+  let secrets = [1, 2, 3];
+  let all_shares = tss.share(&secrets);
+
+  // artificially remove some of the shares; keep only the first 8
+  let indices: Vec<usize> = (0..8).collect();
+  let shares = &all_shares[0..8];
+
+  // reconstruct using remaining subset of shares
+  let recovered_secrets = tss.reconstruct(&indices, shares);
+  assert_eq!(recovered_secrets, vec![1, 2, 3]);
+}
 ```
 
 ## Homomorphic properties
-In this example we're going to pack 3 secrets into each share, using a reconstruction threshold of 4 out of a total of 8 shares.
+Both the Shamir and the packed scheme enjoy certain homomorphic properties: shared secrets can be transformed by manipulating the shares. Both addition and multiplications work, yet notice that the reconstruction limit in the case of multiplication goes up by a factor of two for each application.
+
 ```rust
-let ref pss = tss::PSS_4_8_3;
+extern crate threshold_secret_sharing as tss;
 
-let secrets_1 = vec![1, 2, 3];
-let shares_1 = pss.share(&secrets_1);
+fn main() {
+  // use predefined parameters
+  let ref tss = tss::PSS_4_26_3;
 
-let secrets_2 = vec![4, 5, 6];
-let shares_2 = pss.share(&secrets_2);
+  // generate shares for first vector of secrets
+  let secrets_1 = [1, 2, 3];
+  let shares_1 = tss.share(&secrets_1);
 
-// sum the shares pointwise
-let shares_sum: Vec<_> = shares_1.iter().zip(&shares_2)
-  .map(|(a, b)| (a + b) % pss.prime)
-  .collect();
+  // generate shares for second vector of secrets
+  let secrets_2 = [4, 5, 6];
+  let shares_2 = tss.share(&secrets_2);
 
-let indices_sum: Vec<usize> = (0..shares_sum.len()).collect();
-let secrets_sum = pss.reconstruct(indices_sum, shares_sum);
-assert_eq!(secrets_sum, vec![5, 7, 9]);
+  // combine shares pointwise to get shares of the sum of the secrets
+  let shares_sum: Vec<i64> = shares_1.iter().zip(&shares_2)
+    .map(|(a, b)| (a + b) % tss.prime).collect();
+
+  // artificially remove some of the shares; keep only the first 8
+  let indices: Vec<usize> = (0..8).collect();
+  let shares = &shares_sum[0..8];
+
+  // reconstruct using remaining subset of shares
+  let recovered_secrets = tss.reconstruct(&indices, shares);
+  assert_eq!(recovered_secrets, vec![5, 7, 9]);
+}
 ```

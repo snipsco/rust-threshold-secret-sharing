@@ -1,19 +1,21 @@
-// use super::{Secret, Share};
 use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
 
 
 #[derive(Debug,Copy,Clone)]
 pub struct PackedSecretSharing {
-    pub prime: i64,
-    pub threshold: usize,
-    pub share_count: usize,
-    pub secret_count: usize,
-    pub reconstruct_limit: usize, // = n
-    pub n: usize,  // n = secret_count + threshold + 1
-    pub m: usize,  // m = share_count + 1
-    pub omega_n: i64,
-    pub omega_m: i64
+    // abstract properties
+    pub threshold: usize,         // security threshold
+    pub share_count: usize,       // number of shares to generate
+    pub secret_count: usize,      // number of secrets in each share
+    pub reconstruct_limit: usize, // minimum number of shares required to reconstruct (equals n)
+
+    // implementation configuration
+    pub n: usize,        // secret_count + threshold + 1  -- must be power of 2
+    pub m: usize,        // share_count + 1               -- must be power of 3
+    pub prime: i64,      // prime field to use
+    pub omega_n: i64,    // n-th principal root of unity in Z_p
+    pub omega_m: i64,    // m-th principal root of unity in Z_p
 }
 
 pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
