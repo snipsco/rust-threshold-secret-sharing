@@ -1,5 +1,4 @@
 # Threshold Secret Sharing
-
 Efficient pure-Rust library for [secret sharing](https://en.wikipedia.org/wiki/Secret_sharing), offering efficient share generation and reconstruction for both traditional Shamir sharing and packet sharing. For now, secrets and shares are fixed as prime field elements represented by `i64` values.
 
 
