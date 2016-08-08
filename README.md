@@ -137,7 +137,7 @@ which also adds several extra dependencies.
 
 
 # Performance
-So far most performance efforts has been focused on share generation for the packed scheme, with some obvious enhancements for reconstruction in the process of being implemented. As an example, generating approximately 20,000 shares for 100 secrets with the packed scheme runs in around 33ms on a modern laptop, and in TODO ms on a Raspberry Pi 3.
+So far most performance efforts has been focused on share generation for the packed scheme, with some obvious enhancements for reconstruction in the process of being implemented. As an example, sharing 100 secrets into approximately 20,000 shares with the packed scheme runs in around 31ms on a recent laptop, and in around 590ms on a Raspberry Pi 3.
 
 These numbers were obtained by running
 ```
