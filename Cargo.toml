@@ -13,8 +13,8 @@ keywords = [
   "secure computation", "multi-party computation", "MPC",
   "cryptography", "crypto"
 ]
-homepage = "https://github.com/snipsco/crypto-threshold-secret-sharing"
-documentation = "https://github.com/snipsco/crypto-threshold-secret-sharing"
+homepage = "https://github.com/snipsco/rust-threshold-secret-sharing"
+documentation = "https://github.com/snipsco/rust-threshold-secret-sharing"
 license = ""
 
 [features]
