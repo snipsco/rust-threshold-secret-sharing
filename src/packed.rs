@@ -244,3 +244,105 @@ fn test_share_multiplicative_homomorphism() {
     use numtheory::positivise;
     assert_eq!(positivise(&recovered_secrets, pss.prime), vec![4,10,18]);
 }
+
+
+#[cfg(feature = "paramgen")]
+pub mod paramgen {
+
+    extern crate primal;
+
+    fn check_prime_form(min_p: usize, n: usize, m: usize, p: usize) -> bool {
+        if p < min_p { return false }
+
+        let q = p - 1;
+        if q % n != 0 { return false }
+        if q % m != 0 { return false }
+
+        let q = q / (n * m);
+        if q % n == 0 { return false }
+        if q % m == 0 { return false }
+
+        return true
+    }
+
+    #[test]
+    fn test_check_prime_form() {
+        assert_eq!(primal::Primes::all().find(|p| check_prime_form(198, 8, 9, *p)).unwrap(), 433);
+    }
+
+    fn factor(p: usize) -> Vec<usize> {
+        let mut factors = vec![];
+        let bound = (p as f64).sqrt().ceil() as usize;
+        for f in 2..bound+1 {
+            if p % f == 0 {
+                factors.push(f);
+                factors.push(p / f);
+            }
+        }
+        factors
+    }
+
+    #[test]
+    fn test_factor() {
+        assert_eq!(factor(40), [2, 20, 4, 10, 5, 8]);
+        assert_eq!(factor(41), []);
+    }
+
+    fn find_field(min_p: usize, n: usize, m: usize) -> Option<(i64, i64)> {
+        // find prime of right form
+        let p = primal::Primes::all().find(|p| check_prime_form(min_p, n, m, *p)).unwrap();
+        // find (any) generator
+        let factors = factor(p-1);
+        for g in 2..p {
+            // test generator against all factors of p-1
+            let is_generator = factors.iter().all(|f| {
+                use numtheory::mod_pow;
+                let e = (p - 1) / f;
+                mod_pow(g as i64, e as u32, p as i64) != 1  // TODO check for negative value
+            });
+            // return
+            if is_generator {
+                return Some((p as i64, g as i64))
+            }
+        }
+        // didn't find any
+        None
+    }
+
+    #[test]
+    fn test_find_field() {
+        assert_eq!(find_field(198, 2usize.pow(3), 3usize.pow(2)).unwrap(), (433, 5));
+        assert_eq!(find_field(198, 2usize.pow(3), 3usize.pow(3)).unwrap(), (433, 5));
+        assert_eq!(find_field(198, 2usize.pow(8), 3usize.pow(6)).unwrap(), (746497, 5));
+        assert_eq!(find_field(198, 2usize.pow(8), 3usize.pow(9)).unwrap(), (5038849, 29));
+
+        // assert_eq!(find_field(198, 2usize.pow(11), 3usize.pow(8)).unwrap(), (120932353, 5));
+        // assert_eq!(find_field(198, 2usize.pow(13), 3usize.pow(9)).unwrap(), (483729409, 23));
+    }
+
+    fn find_roots(n: usize, m: usize, p: i64, g: i64) -> (i64, i64) {
+        use numtheory::mod_pow;
+        let omega_n = mod_pow(g, ((p-1) / n as i64) as u32, p);
+        let omega_m = mod_pow(g, ((p-1) / m as i64) as u32, p);
+        (omega_n, omega_m)
+    }
+
+    #[test]
+    fn test_find_roots() {
+        assert_eq!(find_roots(2usize.pow(3), 3usize.pow(2), 433, 5), (354, 150));
+        assert_eq!(find_roots(2usize.pow(3), 3usize.pow(3), 433, 5), (354, 17));
+    }
+
+    pub fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
+        let (prime, g) = find_field(min_size, n, m).unwrap(); // TODO settle option business once and for all (don't remember it as needed)
+        let (omega_n, omega_m) = find_roots(n, m, prime, g);
+        (prime, omega_n, omega_m)
+    }
+
+    #[test]
+    fn test_generate_parameters() {
+        assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(2)), (433, 354, 150));
+        assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(3)), (433, 354, 17));
+    }
+
+}

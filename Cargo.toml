@@ -17,5 +17,9 @@ homepage = "https://github.com/snipsco/crypto-threshold-secret-sharing"
 documentation = "https://github.com/snipsco/crypto-threshold-secret-sharing"
 license = ""
 
+[features]
+paramgen = ["primal"]
+
 [dependencies]
 rand = "0.3.*"
+primal = { version = "0.2", optional = true }
