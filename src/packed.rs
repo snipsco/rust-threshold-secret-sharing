@@ -2,7 +2,7 @@ use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
 
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Copy,Clone,PartialEq)]
 pub struct PackedSecretSharing {
     // abstract properties
     pub threshold: usize,         // security threshold
@@ -343,6 +343,51 @@ pub mod paramgen {
     fn test_generate_parameters() {
         assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(2)), (433, 354, 150));
         assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(3)), (433, 354, 17));
+    }
+
+    use super::PackedSecretSharing;
+
+    impl PackedSecretSharing {
+
+        pub fn new_with_min_size(threshold: usize, secret_count: usize, share_count: usize, min_size: usize) -> PackedSecretSharing {
+            let n = threshold + secret_count + 1;
+            let m = share_count + 1;
+
+            let two_power = (n as f64).log(2f64).floor() as u32;
+            assert!(2usize.pow(two_power) == n);
+
+            let three_power = (m as f64).log(3f64).floor() as u32;
+            assert!(3usize.pow(three_power) == m);
+
+            assert!(min_size >= share_count + secret_count + 1);
+
+            let (prime, omega_n, omega_m) = generate_parameters(min_size, n, m);
+
+            PackedSecretSharing {
+                threshold: threshold,
+                share_count: share_count,
+                secret_count: secret_count,
+                reconstruct_limit: n,
+                n: n,
+                m: m,
+                prime: prime,
+                omega_n: omega_n,
+                omega_m: omega_m,
+            }
+        }
+
+        pub fn new(threshold: usize, secret_count: usize, share_count: usize) -> PackedSecretSharing {
+            let min_size = share_count + secret_count + 1;
+            Self::new_with_min_size(threshold, secret_count, share_count, min_size)
+        }
+
+    }
+
+    #[test]
+    fn test_new() {
+        assert_eq!(PackedSecretSharing::new(155, 100, 728), super::PSS_155_728_100);
+        assert_eq!(PackedSecretSharing::new_with_min_size(4, 3, 8, 200), super::PSS_4_8_3);
+        assert_eq!(PackedSecretSharing::new_with_min_size(4, 3, 26, 200), super::PSS_4_26_3);
     }
 
 }

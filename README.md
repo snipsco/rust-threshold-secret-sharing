@@ -121,3 +121,10 @@ fn main() {
   assert_eq!(recovered_secrets, vec![5, 7, 9]);
 }
 ```
+
+# Parameter generation
+While it's straight-forward to instantiate the Shamir scheme, as mentioned above the packed scheme is more tricky and a few helper methods are provided as a result. Since some applications needs only a fixed choice of parameters, these helper methods are optional and only included if the `paramgen` feature is activated during compilation:
+```
+cargo build --features paramgen
+```
+which also adds several extra dependencies.
