@@ -1,7 +1,4 @@
 
-#![allow(dead_code)]
-
-
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
         (a, 1, 0)
@@ -312,22 +309,22 @@ pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
         .collect()
 }
 
-// TODO deprecate
-fn mod_evaluate_polynomial_naive(coefficients: &[i64], point: i64, prime: i64) -> i64 {
-    // evaluate naively
-    coefficients.iter()
-       .enumerate()
-       .map(|(deg, coef)| (coef * mod_pow(point, deg as u32, prime)) % prime)
-       .fold(0, |a, b| (a + b) % prime)
-}
-
-#[test]
-fn test_mod_evaluate_polynomial_naive() {
-    let poly = vec![1,2,3,4,5,6];
-    let point = 5;
-    let prime = 17;
-    assert_eq!(mod_evaluate_polynomial_naive(&poly, point, prime), 4);
-}
+// deprecated
+// fn mod_evaluate_polynomial_naive(coefficients: &[i64], point: i64, prime: i64) -> i64 {
+//     // evaluate naively
+//     coefficients.iter()
+//        .enumerate()
+//        .map(|(deg, coef)| (coef * mod_pow(point, deg as u32, prime)) % prime)
+//        .fold(0, |a, b| (a + b) % prime)
+// }
+//
+// #[test]
+// fn test_mod_evaluate_polynomial_naive() {
+//     let poly = vec![1,2,3,4,5,6];
+//     let point = 5;
+//     let prime = 17;
+//     assert_eq!(mod_evaluate_polynomial_naive(&poly, point, prime), 4);
+// }
 
 pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
     // evaluate using Horner's rule

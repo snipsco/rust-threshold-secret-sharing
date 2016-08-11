@@ -341,8 +341,8 @@ pub mod paramgen {
 
     #[test]
     fn test_generate_parameters() {
-        assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(2)), (433, 354, 150));
-        assert_eq!(generate_parameters(198, 2usize.pow(3), 3usize.pow(3)), (433, 354, 17));
+        assert_eq!(generate_parameters(200, 2usize.pow(3), 3usize.pow(2)), (433, 354, 150));
+        assert_eq!(generate_parameters(200, 2usize.pow(3), 3usize.pow(3)), (433, 354, 17));
     }
 
     use super::PackedSecretSharing;
@@ -377,7 +377,7 @@ pub mod paramgen {
         }
 
         pub fn new(threshold: usize, secret_count: usize, share_count: usize) -> PackedSecretSharing {
-            let min_size = share_count + secret_count + 1;
+            let min_size = share_count + secret_count + threshold + 1;
             Self::new_with_min_size(threshold, secret_count, share_count, min_size)
         }
 
