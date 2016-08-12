@@ -8,7 +8,7 @@ Efficient pure-Rust library for [secret sharing](https://en.wikipedia.org/wiki/S
 ## Cargo
 ```toml
 [dependencies]
-threshold_secret_sharing = "0.1"
+threshold_secret_sharing = { git = "https://github.com/snipsco/rust-threshold-secret-sharing" }
 ```
 
 
