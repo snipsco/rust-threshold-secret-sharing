@@ -6,6 +6,10 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
+//! Various number theory utilities functions that are used in the library.
+
+/// GCD euclidean recursive implementation. The first member of the returned
+/// triplet is the GCD of `a` and `b`.
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
         (a, 1, 0)
@@ -23,6 +27,7 @@ fn test_gcd() {
 }
 
 
+/// Inverse of `k` in the *Zp* field defined by `prime`.
 pub fn mod_inverse(k: i64, prime: i64) -> i64 {
     let k2 = k % prime;
     let r = if k2 < 0 {
@@ -39,6 +44,7 @@ fn test_mod_inverse() {
 }
 
 
+/// `x` to the power of `e` in the *Zp* field defined by `prime`.
 pub fn mod_pow(mut x: i64, mut e: u32, prime: i64) -> i64 {
     let mut acc = 1;
     while e > 0 {
@@ -68,6 +74,12 @@ fn test_mod_pow() {
 }
 
 
+/// Compute recursively the FFT of `a_coef` in the *Zp* field defined by `prime`.
+///
+/// `omega` must be chosen to be a root of unity for a multiple-of-2 power:
+/// there exists `i` such as: `omega^(2*i) % prime == 1`.
+///
+/// The result will contain `2*i` coefficients.
 pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef.to_vec()
@@ -95,6 +107,7 @@ pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     }
 }
 
+/// Inverse FFT for `fft2`.
 pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let omega_inv = mod_inverse(omega, prime);
     let len = a_point.len();
@@ -127,6 +140,12 @@ fn test_fft2_inverse() {
 }
 
 
+/// Compute recursively the FFT of `a_coef` in the *Zp* field defined by `prime`.
+///
+/// `omega` must be chosen to be a root of unity for a multiple-of-3 power:
+/// there exists `i` such as: `omega^(3*i) % prime == 1`.
+///
+/// The result will contain `3*i` coefficients.
 pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef.to_vec()
@@ -170,6 +189,7 @@ pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     }
 }
 
+/// Inverse FFT for `fft3`.
 pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let omega_inv = mod_inverse(omega, prime);
     let len = a_point.len();
@@ -201,7 +221,17 @@ fn test_fft3_inverse() {
     assert_eq!(a_coef, vec![1,2,3,4,5,6,7,8,9])
 }
 
-
+/// Performs a Lagrange interpolation at origin for a Zp polynomial defined by points.
+///
+/// `points` and `values` are expected to be two arrays of the same size.
+/// `points` contains the evaluation position (aka the "x" values), while
+/// `values` contains the polynomial value at the point (aka y or p(x)).
+///
+/// The result is the value of the polynomial at x=0. It is also its
+/// zero-degree coefficient.
+///
+/// This is obviously less general than `newton_interpolation_general` as we
+/// only get one single coefficient, but is much faster.
 pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64) -> i64 {
     assert_eq!(points.len(), values.len());
     // Lagrange interpolation for point 0
@@ -223,12 +253,18 @@ pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64
     acc
 }
 
-
+/// Holds together points and newton-interpolated coefficients for fast
+/// evaluation.
 pub struct NewtonPolynomial<'a> {
     points: &'a[i64],
     coefficients: Vec<i64>
 }
 
+
+/// General case for newton interpolation in Zp.
+///
+/// Given enough `points` and `values` (x and p(x)), find the coefficients for
+/// p(x).
 pub fn newton_interpolation_general<'a>(points: &'a[i64], values: &[i64], prime: i64) -> NewtonPolynomial<'a> {
     let coefficients = compute_newton_coefficients(points, values, prime);
     NewtonPolynomial {
@@ -309,7 +345,8 @@ fn test_compute_newton_coefficients() {
     assert_eq!(coefficients, vec![8,8,-10,4,0]);
 }
 
-
+/// Arrange all elements of `values` to be between 0 and prime to ease equality
+/// tests.
 pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
     values.iter()
         .map(|&value| if value < 0 { value + prime } else { value })
@@ -333,6 +370,7 @@ pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
 //     assert_eq!(mod_evaluate_polynomial_naive(&poly, point, prime), 4);
 // }
 
+/// Evaluation of a polynomial on Zp at one given point using Horner's method.
 pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
     // evaluate using Horner's rule
     //  - to combine with fold we consider the coefficients in reverse order

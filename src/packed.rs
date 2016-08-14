@@ -5,9 +5,11 @@
 // license <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
+
+//! Packed variant of secret sharing, allowing to share efficiently several values together.
+
 use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
-
 
 #[derive(Debug,Copy,Clone,PartialEq)]
 pub struct PackedSecretSharing {
