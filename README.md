@@ -31,7 +31,7 @@ for the Shamir example below.
 ## Shamir sharing
 Using the Shamir scheme is relatively straight-forward.
 
-When choosing parameters, `threshold` and `parts` must be chosen to satisfy security requirements, and `prime` must be large enough to correctly encode the value to be shared (and such that `prime >= parts + 1`). The reconstruction limit is implicitly defined to be `threshold + 1`.
+When choosing parameters, `reconstruction_limit` and `parts` must be chosen to satisfy security requirements, and `prime` must be large enough to correctly encode the value to be shared (and such that `prime >= parts + 1`). The implicit security threshold is `reconstruction_limit-1`;
 
 When reconstructing the secret, indices must be explicitly provided to identify the shares; these correspond to the indices the shares had in the array returned by `share()`.
 
@@ -41,9 +41,9 @@ extern crate threshold_secret_sharing as tss;
 fn main() {
   // create instance of the Shamir scheme
   let ref tss = tss::shamir::ShamirSecretSharing {
-    threshold: 9,  // security threshold
-    parts: 20,      // number of shares to generate
-    prime: 41       // prime field to use
+    reconstruction_limit: 10,   // how many shares must be known to reconstruct
+    parts: 20,                  // number of shares to generate
+    prime: 41                   // prime field to use
   };
 
   // generate shares for secret
