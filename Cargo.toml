@@ -1,5 +1,5 @@
 [package]
-name = "threshold_secret_sharing"
+name = "threshold-secret-sharing"
 version = "0.1.0"
 authors = [
   "Morten Dahl",
