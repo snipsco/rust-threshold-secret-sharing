@@ -18,7 +18,7 @@ mod shamir_vs_packed {
     #[bench]
     fn bench_100_shamir(b: &mut Bencher) {
         let ref tss = ShamirSecretSharing {
-            threshold: 155/3,
+            reconstruction_limit: 155/3,
             parts: 728/3,
             prime: 746497,
         };
