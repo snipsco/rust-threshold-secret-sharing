@@ -10,20 +10,20 @@
 extern crate test;
 extern crate threshold_secret_sharing as tss;
 
-mod shamir {
+mod shamir_vs_packed {
 
     use test::Bencher;
     use tss::shamir::*;
 
     #[bench]
-    fn bench_large_secret_count(b: &mut Bencher) {
+    fn bench_100_shamir(b: &mut Bencher) {
         let ref tss = ShamirSecretSharing {
-            threshold: 155/3,
+            reconstruction_limit: 155/3,
             parts: 728/3,
             prime: 746497,
         };
 
-        let all_secrets: Vec<i64> = vec![5 ; 100 * 100];
+        let all_secrets: Vec<i64> = vec![5 ; 100 ];
         b.iter(|| {
             let _shares: Vec<Vec<i64>> = all_secrets
                 .iter()
@@ -32,6 +32,14 @@ mod shamir {
                 })
                 .collect();
         });
+    }
+
+    #[bench]
+    fn bench_100_packed(b: &mut Bencher) {
+        use tss::packed::*;
+        let ref pss = PSS_155_728_100;
+        let all_secrets: Vec<i64> = vec![5 ; 100];
+        b.iter(|| { let _shares = pss.share(&all_secrets); })
     }
 
 }
