@@ -83,7 +83,7 @@ fn test_mod_pow() {
 /// to the `a_coef` length, and must be a power of 2.
 /// The result will contains the same number of elements.
 pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    fft2_cooley_tukey(a_coef, omega, prime)
+    fft2_in_place(a_coef, omega, prime)
 }
 
 pub fn fft2_ref(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
@@ -119,12 +119,6 @@ pub fn fft2_ref(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     }
 }
 
-/// Compute recursively the FFT of `a_coef` in the *Zp* field defined by `prime`.
-///
-/// `omega` must be chosen to be a root of unity for a multiple-of-2 power:
-/// there exists `i` such as: `omega^(2*i) % prime == 1`.
-///
-/// The result will contain `2*i` coefficients.
 pub fn fft2_stride(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     fft2_rec_stride(a_coef, 0, 1, omega, prime)
 }
@@ -152,7 +146,7 @@ fn fft2_rec_stride(a_coef: &[i64], offset:usize, stride:usize, omega: i64, prime
     }
 }
 
-pub fn cooley_tukey_rearrange(data:&mut[i64]) {
+pub fn fft2_in_place_rearrange(data:&mut[i64]) {
     let mut target = 0;
     for pos in 0..data.len() {
         if target > pos {
@@ -167,7 +161,7 @@ pub fn cooley_tukey_rearrange(data:&mut[i64]) {
     }
 }
 
-pub fn cooley_tukey_compute(data:&mut[i64], omega:i64, prime:i64) {
+pub fn fft2_in_place_compute(data:&mut[i64], omega:i64, prime:i64) {
 
     let mut factors = vec![];
     let mut step = 1;
@@ -203,17 +197,17 @@ pub fn cooley_tukey_compute(data:&mut[i64], omega:i64, prime:i64) {
     }
 }
 
-pub fn fft2_cooley_tukey(a_coef:&[i64], omega:i64, prime:i64) -> Vec<i64> {
+pub fn fft2_in_place(a_coef:&[i64], omega:i64, prime:i64) -> Vec<i64> {
     let mut data = a_coef.to_vec();
-    cooley_tukey_rearrange(&mut *data);
-    cooley_tukey_compute(&mut *data, omega, prime);
+    fft2_in_place_rearrange(&mut *data);
+    fft2_in_place_compute(&mut *data, omega, prime);
     data
 }
 
 #[test]
-fn test_cooley_tukey_rearrange() {
+fn test_fft2_in_place_rearrange() {
     let mut input = [ 0, 1, 2, 3, 4, 5, 6, 7 ];
-    cooley_tukey_rearrange(&mut input);
+    fft2_in_place_rearrange(&mut input);
     assert_eq!(input, [0, 4, 2, 6, 1, 5, 3, 7]);
 }
 
@@ -246,7 +240,7 @@ fn test_fft2_variants() {
     ] {
         let a_point_ref = positivise(&*fft2_ref(&*example, omega, prime), prime);
         let a_point = positivise(&*fft2(&*example, omega, prime), prime);
-        let a_ct = positivise(&*fft2_cooley_tukey(&*example, omega, prime), prime);
+        let a_ct = positivise(&*fft2_in_place(&*example, omega, prime), prime);
         assert_eq!(a_point, a_point_ref);
         assert_eq!(a_ct, a_point_ref);
     }
