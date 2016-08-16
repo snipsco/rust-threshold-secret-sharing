@@ -11,61 +11,6 @@
 use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
 
-#[derive(Debug,Copy,Clone,PartialEq)]
-pub struct PackedSecretSharing {
-    // abstract properties
-    /// security threshold
-    pub threshold: usize,
-    /// number of shares to generate
-    pub share_count: usize,
-    /// number of secrets in each share
-    pub secret_count: usize,
-
-    // implementation configuration
-    /// prime field to use
-    pub prime: i64,
-    /// `reconstruct_limit`-th principal root of unity in Z_p
-    pub omega_secrets: i64,
-    /// `secret_count+1`-th principal root of unity in Z_p
-    pub omega_shares: i64,
-}
-
-pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
-    threshold: 4,
-    share_count: 8,
-    secret_count: 3,
-    prime: 433,
-    omega_secrets: 354,
-    omega_shares: 150,
-};
-
-pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
-    threshold: 4,
-    share_count: 26,
-    secret_count: 3,
-    prime: 433,
-    omega_secrets: 354,
-    omega_shares: 17,
-};
-
-pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
-    threshold: 155,
-    share_count: 728,
-    secret_count: 100,
-    prime: 746497,
-    omega_secrets: 95660,
-    omega_shares: 610121,
-};
-
-pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
-    threshold: 155,
-    share_count: 19682,
-    secret_count: 100,
-    prime: 5038849,
-    omega_secrets: 4318906,
-    omega_shares: 1814687,
-};
-
 /// Packed variant of the secret sharing.
 ///
 /// In Shamir scheme, one single value (one number) is set as the 0-th
@@ -92,11 +37,74 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
 ///
 /// So there exist constraints between the various parameters:
 ///
-/// * prime must be big enough to handle the shared values
+/// * `prime` must be big enough to handle the shared values
 /// * `secret_count + threshold + 1` (aka reconstruct_limit) must be a power of 2
 /// * `share_count + 1` must be a power of 3
 /// * `omega_secrets` must be a `reconstruct_limit()`-th root of unity
 /// * `omega_shares` must be a `(share_count+1)`-th root of unity
+#[derive(Debug,Copy,Clone,PartialEq)]
+pub struct PackedSecretSharing {
+    // abstract properties
+    /// security threshold
+    pub threshold: usize,
+    /// number of shares to generate
+    pub share_count: usize,
+    /// number of secrets in each share
+    pub secret_count: usize,
+
+    // implementation configuration
+    /// prime field to use
+    pub prime: i64,
+    /// `reconstruct_limit`-th principal root of unity in Z_p
+    pub omega_secrets: i64,
+    /// `secret_count+1`-th principal root of unity in Z_p
+    pub omega_shares: i64,
+}
+
+/// Example of tiny PSS settings, for sharing 3 secrets 8 ways, with
+/// a security threshold of 4.
+pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
+    threshold: 4,
+    share_count: 8,
+    secret_count: 3,
+    prime: 433,
+    omega_secrets: 354,
+    omega_shares: 150,
+};
+
+/// Example of small PSS settings, for sharing 3 secrets 26 ways, with
+/// a security threshold of 4.
+pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
+    threshold: 4,
+    share_count: 26,
+    secret_count: 3,
+    prime: 433,
+    omega_secrets: 354,
+    omega_shares: 17,
+};
+
+/// Example of PSS settings, for sharing 100 secrets 728 ways, with
+/// a security threshold of 156.
+pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
+    threshold: 155,
+    share_count: 728,
+    secret_count: 100,
+    prime: 746497,
+    omega_secrets: 95660,
+    omega_shares: 610121,
+};
+
+/// Example of PSS settings, for sharing 100 secrets 19682 ways, with
+/// a security threshold of 156.
+pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
+    threshold: 155,
+    share_count: 19682,
+    secret_count: 100,
+    prime: 5038849,
+    omega_secrets: 4318906,
+    omega_shares: 1814687,
+};
+
 impl PackedSecretSharing {
     /// minimum number of shares required to reconstruct secret
     ///
