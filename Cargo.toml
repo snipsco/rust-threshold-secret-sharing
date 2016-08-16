@@ -10,7 +10,7 @@ keywords = [
   "secret_sharing",
   "Shamir_secret_sharing",
   "packed_secret_sharing",
-  "multi-party_computation",
+  "MPC",
   "cryptography"
 ]
 homepage = "https://github.com/snipsco/rust-threshold-secret-sharing"
