@@ -74,12 +74,12 @@ fn test_mod_pow() {
 }
 
 
-/// Compute recursively the FFT of `a_coef` in the *Zp* field defined by `prime`.
+/// Compute recursively the 2-radix FFT of `a_coef` in the *Zp* field defined
+/// by `prime`.
 ///
-/// `omega` must be chosen to be a root of unity for a multiple-of-2 power:
-/// there exists `i` such as: `omega^(2*i) % prime == 1`.
-///
-/// The result will contain `2*i` coefficients.
+/// `omega` must be a principal root of unity. `omega` degree must be equal
+/// to the `a_coef` length, and must be a power of 2.
+/// The result will contains the same number of elements.
 pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef.to_vec()
@@ -139,13 +139,12 @@ fn test_fft2_inverse() {
     assert_eq!(positivise(&a_coef, prime), vec![1,2,3,4,5,6,7,8])
 }
 
-
-/// Compute recursively the FFT of `a_coef` in the *Zp* field defined by `prime`.
+/// Compute recursively the 3-radix FFT of `a_coef` in the *Zp* field defined
+/// by `prime`.
 ///
-/// `omega` must be chosen to be a root of unity for a multiple-of-3 power:
-/// there exists `i` such as: `omega^(3*i) % prime == 1`.
-///
-/// The result will contain `3*i` coefficients.
+/// `omega` must be a principal root of unity. `omega` degree must be equal
+/// to the `a_coef` length, and must be a power of 3.
+/// The result will contains the same number of elements.
 pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef.to_vec()
