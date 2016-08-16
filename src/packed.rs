@@ -76,7 +76,7 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
 ///
 /// The idea behing the packed scheme is to "fix" more values of the
 /// polynomial to represent more secret values. We could for instance pick
-/// evaluation at 0, -1, -2 to encode three values, find a polynomial of 
+/// evaluation at 0, -1, -2 to encode three values, find a polynomial of
 /// high-enough degree going through these points, then evaluate it on 1, 2...
 /// to generate enough shares.
 ///
@@ -204,17 +204,19 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn test_evaluate_polynomial() {
         let ref pss = PSS_4_26_3;
-        let poly = vec![113, 51, 261, 267, 108, 432, 388, 112, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0];
+        let poly = vec![113, 51, 261, 267, 108, 432, 388, 112, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let points = pss.evaluate_polynomial(poly);
-        assert_eq!(points,
-                   vec![0, 77, 230, 91, 286, 179, 337, 83, 212, 88, 406, 58, 425, 345, 350, 336,
-                        430, 404, 51, 60, 305, 395, 84, 156, 160, 112, 422]);
+        assert_eq!(points, vec![ 0, 77, 230, 91, 286, 179, 337, 83, 212, 88,
+                        406, 58, 425, 345, 350, 336, 430, 404, 51, 60, 305,
+                        395, 84, 156, 160, 112, 422]);
     }
 
     #[test]
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn test_share() {
         let ref pss = PSS_4_26_3;
 
@@ -229,7 +231,9 @@ mod tests {
         let recovered_secrets: Vec<i64> = (1..secrets.len() + 1)
             .map(|i| {
                 mod_evaluate_polynomial(&poly,
-                                        mod_pow(PSS_4_26_3.omega_secrets, i as u32, PSS_4_26_3.prime),
+                                        mod_pow(PSS_4_26_3.omega_secrets,
+                                                i as u32,
+                                                PSS_4_26_3.prime),
                                         PSS_4_26_3.prime)
             })
             .collect();
@@ -319,26 +323,17 @@ pub mod paramgen {
 
     extern crate primal;
 
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     fn check_prime_form(min_p: usize, n: usize, m: usize, p: usize) -> bool {
-        if p < min_p {
-            return false;
-        }
+        if p < min_p { return false; }
 
         let q = p - 1;
-        if q % n != 0 {
-            return false;
-        }
-        if q % m != 0 {
-            return false;
-        }
+        if q % n != 0 { return false; }
+        if q % m != 0 { return false; }
 
         let q = q / (n * m);
-        if q % n == 0 {
-            return false;
-        }
-        if q % m == 0 {
-            return false;
-        }
+        if q % n == 0 { return false; }
+        if q % m == 0 { return false; }
 
         return true;
     }
