@@ -8,8 +8,8 @@ authors = [
 description = "A pure-Rust implementation of various threshold secret sharing schemes"
 keywords = [
   "secret_sharing",
-  "Shamir_secret_sharing",
-  "packed_secret_sharing",
+  "Shamir",
+  "packed",
   "MPC",
   "cryptography"
 ]
