@@ -40,7 +40,6 @@ use numtheory::*;
 ///    println!("The recovered secret is {}", recovered_secret);
 ///    assert_eq!(recovered_secret, secret);
 /// ```
-
 #[derive(Debug)]
 pub struct ShamirSecretSharing {
     /// Maximum number of shares that can be known without exposing the secret.
@@ -59,7 +58,6 @@ pub static SHAMIR_5_20: ShamirSecretSharing = ShamirSecretSharing {
 };
 
 impl ShamirSecretSharing {
-
     /// Generate `parts` shares from `secret`.
     pub fn share(&self, secret: i64) -> Vec<i64> {
         let poly = self.sample_polynomial(secret);
@@ -89,7 +87,8 @@ impl ShamirSecretSharing {
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
         let mut rng = rand::OsRng::new().unwrap();
-        let random_coefficients: Vec<i64> = (1..self.threshold+1).map(|_| range.sample(&mut rng)).collect();
+        let random_coefficients: Vec<i64> =
+            (1..self.threshold + 1).map(|_| range.sample(&mut rng)).collect();
         coefficients.extend(random_coefficients);
         // return
         coefficients
@@ -101,16 +100,16 @@ impl ShamirSecretSharing {
             .map(|point| mod_evaluate_polynomial(coefficients, point as i64, self.prime))
             .collect()
     }
-
 }
 
 
 #[test]
 fn test_evaluate_polynomial() {
     let ref tss = SHAMIR_5_20;
-    let poly = vec![1,2,0];
+    let poly = vec![1, 2, 0];
     let values = tss.evaluate_polynomial(&poly);
-    assert_eq!(*values, [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 0]);
+    assert_eq!(*values,
+               [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 0]);
 }
 
 #[test]
@@ -118,7 +117,7 @@ fn wikipedia_example() {
     let tss = ShamirSecretSharing {
         threshold: 2,
         parts: 6,
-        prime: 1613
+        prime: 1613,
     };
 
     let shares = tss.evaluate_polynomial(&[1234, 166, 94]);
@@ -134,11 +133,11 @@ fn test_shamir() {
     let tss = ShamirSecretSharing {
         threshold: 2,
         parts: 6,
-        prime: 41
+        prime: 41,
     };
     let secret = 1;
     let shares = tss.share(secret);
-    assert_eq!(tss.reconstruct(&[0, 1, 2],    &shares[0..3]), secret);
-    assert_eq!(tss.reconstruct(&[1, 2, 3],    &shares[1..4]), secret);
+    assert_eq!(tss.reconstruct(&[0, 1, 2], &shares[0..3]), secret);
+    assert_eq!(tss.reconstruct(&[1, 2, 3], &shares[1..4]), secret);
     assert_eq!(tss.reconstruct(&[2, 3, 4, 5], &shares[2..6]), secret);
 }

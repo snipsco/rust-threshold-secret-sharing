@@ -80,8 +80,8 @@ mod packed {
         let all_shares = pss.share(&secrets);
 
         // reconstruct using minimum number of shares required
-        let indices: Vec<usize> = (0..pss.reconstruct_limit).collect();
-        let shares = &all_shares[0..pss.reconstruct_limit];
+        let indices: Vec<usize> = (0..pss.reconstruct_limit()).collect();
+        let shares = &all_shares[0..pss.reconstruct_limit()];
 
         b.iter(|| {
             let _recovered_secrets = pss.reconstruct(&indices, &shares);

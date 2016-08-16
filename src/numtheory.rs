@@ -51,8 +51,7 @@ pub fn mod_pow(mut x: i64, mut e: u32, prime: i64) -> i64 {
         if e % 2 == 0 {
             // even
             // no-op
-        }
-        else {
+        } else {
             // odd
             acc = (acc * x) % prime;
         }
@@ -86,8 +85,14 @@ pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     } else {
         // split A(x) into B(x) and C(x): A(x) = B(x^2) + x C(x^2)
         // TODO avoid copying
-        let b_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 2 == 0 { Some(i) } else { None } ).collect();
-        let c_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 2 == 1 { Some(i) } else { None } ).collect();
+        let b_coef: Vec<i64> = a_coef.iter()
+            .enumerate()
+            .filter_map(|(x, &i)| if x % 2 == 0 { Some(i) } else { None })
+            .collect();
+        let c_coef: Vec<i64> = a_coef.iter()
+            .enumerate()
+            .filter_map(|(x, &i)| if x % 2 == 1 { Some(i) } else { None })
+            .collect();
 
         // recurse
         let b_point = fft2(&b_coef, mod_pow(omega, 2, prime), prime);
@@ -98,8 +103,9 @@ pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
         let half_len = len >> 1;
         let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
         for i in 0..half_len {
-            a_point[i]            = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
-            a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
+            a_point[i] = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
+            a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) %
+                                    prime;
         }
 
         // return
@@ -113,7 +119,7 @@ pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let len = a_point.len();
     let len_inv = mod_inverse(len as i64, prime);
     let scaled_a_coef = fft2(a_point, omega_inv, prime);
-    let a_coef = scaled_a_coef.iter().map(|x| { x * len_inv % prime }).collect();
+    let a_coef = scaled_a_coef.iter().map(|x| x * len_inv % prime).collect();
     a_coef
 }
 
@@ -123,7 +129,7 @@ fn test_fft2() {
     let prime = 433;
     let omega = 354;
 
-    let a_coef = vec![1,2,3,4,5,6,7,8];
+    let a_coef = vec![1, 2, 3, 4, 5, 6, 7, 8];
     let a_point = fft2(&a_coef, omega, prime);
     assert_eq!(a_point, vec![36, -130, -287, 3, -4, 422, 279, -311])
 }
@@ -136,7 +142,7 @@ fn test_fft2_inverse() {
 
     let a_point = vec![36, -130, -287, 3, -4, 422, 279, -311];
     let a_coef = fft2_inverse(&a_point, omega, prime);
-    assert_eq!(positivise(&a_coef, prime), vec![1,2,3,4,5,6,7,8])
+    assert_eq!(positivise(&a_coef, prime), vec![1, 2, 3, 4, 5, 6, 7, 8])
 }
 
 /// Compute recursively the 3-radix FFT of `a_coef` in the *Zp* field defined
@@ -151,9 +157,18 @@ pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     } else {
         // split A(x) into B(x), C(x), and D(x): A(x) = B(x^3) + x C(x^3) + x^2 D(x^3)
         // TODO avoid copying
-        let b_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 3 == 0 { Some(i) } else { None } ).collect();
-        let c_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 3 == 1 { Some(i) } else { None } ).collect();
-        let d_coef: Vec<i64> = a_coef.iter().enumerate().filter_map(|(x,&i)| if x % 3 == 2 { Some(i) } else { None } ).collect();
+        let b_coef: Vec<i64> = a_coef.iter()
+            .enumerate()
+            .filter_map(|(x, &i)| if x % 3 == 0 { Some(i) } else { None })
+            .collect();
+        let c_coef: Vec<i64> = a_coef.iter()
+            .enumerate()
+            .filter_map(|(x, &i)| if x % 3 == 1 { Some(i) } else { None })
+            .collect();
+        let d_coef: Vec<i64> = a_coef.iter()
+            .enumerate()
+            .filter_map(|(x, &i)| if x % 3 == 2 { Some(i) } else { None })
+            .collect();
 
         // recurse
         let omega_cubed = mod_pow(omega, 3, prime);
@@ -194,7 +209,7 @@ pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let len = a_point.len();
     let len_inv = mod_inverse(len as i64, prime);
     let scaled_a_coef = fft3(a_point, omega_inv, prime);
-    let a_coef = scaled_a_coef.iter().map(|x| { x * len_inv % prime }).collect();
+    let a_coef = scaled_a_coef.iter().map(|x| x * len_inv % prime).collect();
     a_coef
 }
 
@@ -204,7 +219,7 @@ fn test_fft3() {
     let prime = 433;
     let omega = 150;
 
-    let a_coef = vec![1,2,3,4,5,6,7,8,9];
+    let a_coef = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let a_point = fft3(&a_coef, omega, prime);
     assert_eq!(a_point, vec![45, 404, 407, 266, 377, 47, 158, 17, 20])
 }
@@ -217,7 +232,7 @@ fn test_fft3_inverse() {
 
     let a_point = vec![45, 404, 407, 266, 377, 47, 158, 17, 20];
     let a_coef = fft3_inverse(&a_point, omega, prime);
-    assert_eq!(a_coef, vec![1,2,3,4,5,6,7,8,9])
+    assert_eq!(a_coef, vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
 }
 
 /// Performs a Lagrange interpolation at origin for a Zp polynomial defined by points.
@@ -255,8 +270,8 @@ pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64
 /// Holds together points and newton-interpolated coefficients for fast
 /// evaluation.
 pub struct NewtonPolynomial<'a> {
-    points: &'a[i64],
-    coefficients: Vec<i64>
+    points: &'a [i64],
+    coefficients: Vec<i64>,
 }
 
 
@@ -264,11 +279,14 @@ pub struct NewtonPolynomial<'a> {
 ///
 /// Given enough `points` and `values` (x and p(x)), find the coefficients for
 /// p(x).
-pub fn newton_interpolation_general<'a>(points: &'a[i64], values: &[i64], prime: i64) -> NewtonPolynomial<'a> {
+pub fn newton_interpolation_general<'a>(points: &'a [i64],
+                                        values: &[i64],
+                                        prime: i64)
+                                        -> NewtonPolynomial<'a> {
     let coefficients = compute_newton_coefficients(points, values, prime);
     NewtonPolynomial {
         points: points,
-        coefficients: coefficients
+        coefficients: coefficients,
     }
 }
 
@@ -276,13 +294,15 @@ pub fn newton_interpolation_general<'a>(points: &'a[i64], values: &[i64], prime:
 fn test_newton_interpolation_general() {
     let prime = 17;
 
-    let poly = [1,2,3,4];
+    let poly = [1, 2, 3, 4];
     let points = vec![5, 6, 7, 8, 9];
-    let values: Vec<i64> = points.iter().map(|&point| mod_evaluate_polynomial(&poly, point, prime)).collect();
+    let values: Vec<i64> =
+        points.iter().map(|&point| mod_evaluate_polynomial(&poly, point, prime)).collect();
     assert_eq!(values, vec![8, 16, 4, 13, 16]);
 
     let recovered_poly = newton_interpolation_general(&points, &values, prime);
-    let recovered_values: Vec<i64> = points.iter().map(|&point| newton_evaluate(&recovered_poly, point, prime)).collect();
+    let recovered_values: Vec<i64> =
+        points.iter().map(|&point| newton_evaluate(&recovered_poly, point, prime)).collect();
     assert_eq!(recovered_values, values);
 
     assert_eq!(newton_evaluate(&recovered_poly, 10, prime), 3);
@@ -293,7 +313,7 @@ fn test_newton_interpolation_general() {
 pub fn newton_evaluate(poly: &NewtonPolynomial, point: i64, prime: i64) -> i64 {
     // compute Newton points
     let mut newton_points = vec![1];
-    for i in 0..poly.points.len()-1 {
+    for i in 0..poly.points.len() - 1 {
         let diff = (point - poly.points[i]) % prime;
         let product = (newton_points[i] * diff) % prime;
         newton_points.push(product);
@@ -309,11 +329,12 @@ pub fn newton_evaluate(poly: &NewtonPolynomial, point: i64, prime: i64) -> i64 {
 fn compute_newton_coefficients(points: &[i64], values: &[i64], prime: i64) -> Vec<i64> {
     assert_eq!(points.len(), values.len());
 
-    let mut store: Vec<(usize, usize, i64)> = values.iter().enumerate().map(|(index, &value)| (index, index, value)).collect();
+    let mut store: Vec<(usize, usize, i64)> =
+        values.iter().enumerate().map(|(index, &value)| (index, index, value)).collect();
 
     for j in 1..store.len() {
         for i in (j..store.len()).rev() {
-            let index_lower = store[i-1].0;
+            let index_lower = store[i - 1].0;
             let index_upper = store[i].1;
 
             let point_lower = points[index_lower];
@@ -321,7 +342,7 @@ fn compute_newton_coefficients(points: &[i64], values: &[i64], prime: i64) -> Ve
             let point_diff = (point_upper - point_lower) % prime;
             let point_diff_inverse = mod_inverse(point_diff, prime);
 
-            let coef_lower = store[i-1].2;
+            let coef_lower = store[i - 1].2;
             let coef_upper = store[i].2;
             let coef_diff = (coef_upper - coef_lower) % prime;
 
@@ -341,7 +362,7 @@ fn test_compute_newton_coefficients() {
     let prime = 17;
 
     let coefficients = compute_newton_coefficients(&points, &values, prime);
-    assert_eq!(coefficients, vec![8,8,-10,4,0]);
+    assert_eq!(coefficients, vec![8, 8, -10, 4, 0]);
 }
 
 /// Arrange all elements of `values` to be between 0 and prime to ease equality
@@ -382,7 +403,7 @@ pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> 
 
 #[test]
 fn test_mod_evaluate_polynomial() {
-    let poly = vec![1,2,3,4,5,6];
+    let poly = vec![1, 2, 3, 4, 5, 6];
     let point = 5;
     let prime = 17;
     assert_eq!(mod_evaluate_polynomial(&poly, point, prime), 4);
