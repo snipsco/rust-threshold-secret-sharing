@@ -7,10 +7,10 @@ authors = [
 ]
 description = "A pure-Rust implementation of various threshold secret sharing schemes"
 keywords = [
-  "threshold secret sharing", "secret sharing",
-  "Shamir secret sharing",
-  "packed secret sharing",
-  "secure computation", "multi-party computation", "MPC",
+  "threshold_secret_sharing", "secret_sharing",
+  "Shamir_secret_sharing",
+  "packed_secret_sharing",
+  "secure_computation", "multi-party_computation", "MPC",
   "cryptography", "crypto"
 ]
 homepage = "https://github.com/snipsco/rust-threshold-secret-sharing"
