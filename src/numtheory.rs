@@ -123,30 +123,42 @@ pub fn fft2_stride(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     fft2_rec_stride(a_coef, 0, 1, omega, prime)
 }
 
-fn fft2_rec_stride(a_coef: &[i64], offset:usize, stride:usize, omega: i64, prime: i64) -> Vec<i64> {
+fn fft2_rec_stride(a_coef: &[i64],
+                   offset: usize,
+                   stride: usize,
+                   omega: i64,
+                   prime: i64)
+                   -> Vec<i64> {
     if a_coef.len() == stride {
-        vec!(a_coef[offset])
+        vec![a_coef[offset]]
     } else {
         // recurse
-        let b_point = fft2_rec_stride(&a_coef, offset, 2*stride,  mod_pow(omega, 2, prime), prime);
-        let c_point = fft2_rec_stride(&a_coef, offset+stride, 2*stride, mod_pow(omega, 2, prime), prime);
+        let b_point = fft2_rec_stride(&a_coef, offset, 2 * stride, mod_pow(omega, 2, prime), prime);
+        let c_point = fft2_rec_stride(&a_coef,
+                                      offset + stride,
+                                      2 * stride,
+                                      mod_pow(omega, 2, prime),
+                                      prime);
 
         // combine
-        let len = a_coef.len()/stride;
+        let len = a_coef.len() / stride;
         let half_len = len >> 1;
-        //let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
+        // let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
         let mut a_point = Vec::with_capacity(len);  // TODO trick: unsafe { Vec.set_len() }
-        unsafe { a_point.set_len(len); }
+        unsafe {
+            a_point.set_len(len);
+        }
         for i in 0..half_len {
-            a_point[i]            = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
-            a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
+            a_point[i] = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
+            a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) %
+                                    prime;
         }
 
         a_point
     }
 }
 
-pub fn fft2_in_place_rearrange(data:&mut[i64]) {
+pub fn fft2_in_place_rearrange(data: &mut [i64]) {
     let mut target = 0;
     for pos in 0..data.len() {
         if target > pos {
@@ -161,7 +173,7 @@ pub fn fft2_in_place_rearrange(data:&mut[i64]) {
     }
 }
 
-pub fn fft2_in_place_compute(data:&mut[i64], omega:i64, prime:i64) {
+pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
 
     let mut factors = vec![];
     let mut step = 1;
@@ -180,24 +192,24 @@ pub fn fft2_in_place_compute(data:&mut[i64], omega:i64, prime:i64) {
     let mut k = 0;
     let mut step = 1;
     while step < data.len() {
-        let jump = step*2;
+        let jump = step * 2;
         for group in 0..step {
             let mut pair = group;
             while pair < data.len() {
-                let match_ = pair+step;
+                let match_ = pair + step;
                 let product = (factors[k] * data[match_]) % prime;
                 data[match_] = (data[pair] - product) % prime;
-                data[pair]   = (data[pair] + product) % prime;
+                data[pair] = (data[pair] + product) % prime;
                 pair += jump;
             }
-            k+=1;
+            k += 1;
         }
 
         step *= 2;
     }
 }
 
-pub fn fft2_in_place(a_coef:&[i64], omega:i64, prime:i64) -> Vec<i64> {
+pub fn fft2_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let mut data = a_coef.to_vec();
     fft2_in_place_rearrange(&mut *data);
     fft2_in_place_compute(&mut *data, omega, prime);
@@ -206,7 +218,7 @@ pub fn fft2_in_place(a_coef:&[i64], omega:i64, prime:i64) -> Vec<i64> {
 
 #[test]
 fn test_fft2_in_place_rearrange() {
-    let mut input = [ 0, 1, 2, 3, 4, 5, 6, 7 ];
+    let mut input = [0, 1, 2, 3, 4, 5, 6, 7];
     fft2_in_place_rearrange(&mut input);
     assert_eq!(input, [0, 4, 2, 6, 1, 5, 3, 7]);
 }
@@ -225,19 +237,17 @@ pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
 fn test_fft2_variants() {
     let prime = 433;
     let omega = 354;
-    for example in &[
-        vec![0,0,0,0],
-        vec![1,0,0,0],
-        vec![0,1,0,0],
-        vec![0,0,1,0],
-        vec![0,0,0,1],
-        vec![0,1,0,1,0,1,0,1],
-        vec![0,1,0,0,0,0,0,0],
-        vec![0,0,1,1,0,0,1,1],
-        vec![1,0,0,0,0,0,0,0],
-        vec![1,1,1,1,1,1,1,1],
-        vec![0,0,1,0,0,0,0,0]
-    ] {
+    for example in &[vec![0, 0, 0, 0],
+                     vec![1, 0, 0, 0],
+                     vec![0, 1, 0, 0],
+                     vec![0, 0, 1, 0],
+                     vec![0, 0, 0, 1],
+                     vec![0, 1, 0, 1, 0, 1, 0, 1],
+                     vec![0, 1, 0, 0, 0, 0, 0, 0],
+                     vec![0, 0, 1, 1, 0, 0, 1, 1],
+                     vec![1, 0, 0, 0, 0, 0, 0, 0],
+                     vec![1, 1, 1, 1, 1, 1, 1, 1],
+                     vec![0, 0, 1, 0, 0, 0, 0, 0]] {
         let a_point_ref = positivise(&*fft2_ref(&*example, omega, prime), prime);
         let a_point = positivise(&*fft2(&*example, omega, prime), prime);
         let a_ct = positivise(&*fft2_in_place(&*example, omega, prime), prime);
@@ -273,7 +283,7 @@ fn test_fft2_big() {
     let prime = 5038849;
     let omega = 4318906;
 
-    let a_coef:Vec<i64> = (0..256).collect();
+    let a_coef: Vec<i64> = (0..256).collect();
     let a_point = fft2(&a_coef, omega, prime);
     let a_coef_back = fft2_inverse(&a_point, omega, prime);
 
