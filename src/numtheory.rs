@@ -102,8 +102,8 @@ pub fn fft2_ref(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
             .collect();
 
         // recurse
-        let b_point = fft2(&b_coef, mod_pow(omega, 2, prime), prime);
-        let c_point = fft2(&c_coef, mod_pow(omega, 2, prime), prime);
+        let b_point = fft2_ref(&b_coef, mod_pow(omega, 2, prime), prime);
+        let c_point = fft2_ref(&c_coef, mod_pow(omega, 2, prime), prime);
 
         // combine
         let len = a_coef.len();
@@ -174,38 +174,24 @@ pub fn fft2_in_place_rearrange(data: &mut [i64]) {
 }
 
 pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
-
-    let mut factors = vec![];
-    let mut step = 1;
-    let mut pow = data.len() / 2;
-    while step < data.len() {
+    let mut depth = 0;
+    while 1<<depth < data.len() {
+        let step = 1<<depth;
+        let jump = 2*step;
+        let factor_stride = mod_pow(omega, (data.len()/step/2) as u32, prime);
         let mut factor = 1;
-        let mult = mod_pow(omega, pow as u32, prime);
-        for _ in 0..step {
-            factors.push(factor);
-            factor = (factor * mult) % prime;
-        }
-        step <<= 1;
-        pow >>= 1;
-    }
-
-    let mut k = 0;
-    let mut step = 1;
-    while step < data.len() {
-        let jump = step * 2;
         for group in 0..step {
             let mut pair = group;
             while pair < data.len() {
                 let match_ = pair + step;
-                let product = (factors[k] * data[match_]) % prime;
+                let product = (factor * data[match_]) % prime;
                 data[match_] = (data[pair] - product) % prime;
                 data[pair] = (data[pair] + product) % prime;
                 pair += jump;
             }
-            k += 1;
+            factor = (factor*factor_stride)%prime;
         }
-
-        step *= 2;
+        depth += 1;
     }
 }
 
