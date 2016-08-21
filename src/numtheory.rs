@@ -43,6 +43,13 @@ fn test_mod_inverse() {
     assert_eq!(mod_inverse(3, 7), 5);
 }
 
+macro_rules! maybe_reduce {
+    ($target:expr, $prime:ident, $max:ident) => {
+        if $target > $max {
+            $target %= $prime;
+        }
+    }
+}
 
 /// `x` to the power of `e` in the *Zp* field defined by `prime`.
 pub fn mod_pow(mut x: i64, mut e: u32, prime: i64) -> i64 {
@@ -158,7 +165,7 @@ fn fft2_rec_stride(a_coef: &[i64],
     }
 }
 
-pub fn fft2_in_place_rearrange(data: &mut [i64]) {
+pub fn fft2_in_place_rearrange(data: &mut [u64]) {
     let mut target = 0;
     for pos in 0..data.len() {
         if target > pos {
@@ -173,20 +180,28 @@ pub fn fft2_in_place_rearrange(data: &mut [i64]) {
     }
 }
 
-pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
+pub fn fft2_in_place_compute(data: &mut [u64], omega: u64, prime: u64) {
     let mut depth = 0;
+    let max = u64::max_value() / prime / 2;
+    let big_omega = mod_pow(omega as i64, data.len() as u32 / 2, prime as i64) as u64 % prime;
     while 1 << depth < data.len() {
         let step = 1 << depth;
         let jump = 2 * step;
-        let factor_stride = mod_pow(omega, (data.len() / step / 2) as u32, prime);
+        let factor_stride =
+            mod_pow(omega as i64, (data.len() / step / 2) as u32, prime as i64) as u64;
         let mut factor = 1;
         for group in 0..step {
             let mut pair = group;
             while pair < data.len() {
-                let match_ = pair + step;
-                let product = (factor * data[match_]) % prime;
-                data[match_] = (data[pair] - product) % prime;
-                data[pair] = (data[pair] + product) % prime;
+                let (x, mut y) = (data[pair], data[pair + step] * factor);
+                maybe_reduce!(y, prime, max);
+
+                data[pair] = x + y;
+                data[pair + step] = x + big_omega * y;
+
+                maybe_reduce!(data[pair], prime, max);
+                maybe_reduce!(data[pair + step], prime, max);
+
                 pair += jump;
             }
             factor = (factor * factor_stride) % prime;
@@ -196,10 +211,11 @@ pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
 }
 
 pub fn fft2_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    let mut data = a_coef.to_vec();
+    let mut data: Vec<u64> =
+        a_coef.iter().map(|i| (if *i > 0 { *i } else { i + prime }) as u64).collect();
     fft2_in_place_rearrange(&mut *data);
-    fft2_in_place_compute(&mut *data, omega, prime);
-    data
+    fft2_in_place_compute(&mut *data, omega as u64, prime as u64);
+    data.iter().map(|coef| (coef % prime as u64) as i64).collect()
 }
 
 #[test]
@@ -222,13 +238,21 @@ pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
 #[test]
 fn test_fft2_variants() {
     let prime = 433;
-    let omega = 354;
+    let omega = (354 * 354) % 433;
     for example in &[vec![0, 0, 0, 0],
                      vec![1, 0, 0, 0],
                      vec![0, 1, 0, 0],
                      vec![0, 0, 1, 0],
-                     vec![0, 0, 0, 1],
-                     vec![0, 1, 0, 1, 0, 1, 0, 1],
+                     vec![0, 0, 0, 1]] {
+        let a_point_ref = positivise(&*fft2_ref(&*example, omega, prime), prime);
+        let a_point = positivise(&*fft2(&*example, omega, prime), prime);
+        let a_ct = positivise(&*fft2_in_place(&*example, omega, prime), prime);
+        assert_eq!(a_point, a_point_ref);
+        assert_eq!(a_ct, a_point_ref);
+    }
+    let prime = 433;
+    let omega = 354;
+    for example in &[vec![0, 1, 0, 1, 0, 1, 0, 1],
                      vec![0, 1, 0, 0, 0, 0, 0, 0],
                      vec![0, 0, 1, 1, 0, 0, 1, 1],
                      vec![1, 0, 0, 0, 0, 0, 0, 0],
@@ -353,11 +377,11 @@ pub fn trigits_len(n: usize) -> usize {
 }
 
 
-pub fn fft3_in_place_rearrange(data: &mut [i64]) {
+pub fn fft3_in_place_rearrange(data: &mut [u64]) {
     let mut target = 0isize;
     let trigits_len = trigits_len(data.len() - 1);
     let mut trigits: Vec<u8> = ::std::iter::repeat(0).take(trigits_len).collect();
-    let mut powers: Vec<isize> = (0..trigits_len).map(|x| 3isize.pow(x as u32)).rev().collect();
+    let powers: Vec<isize> = (0..trigits_len).map(|x| 3isize.pow(x as u32)).rev().collect();
     for pos in 0..data.len() {
         if target as usize > pos {
             data.swap(target as usize, pos)
@@ -375,25 +399,33 @@ pub fn fft3_in_place_rearrange(data: &mut [i64]) {
     }
 }
 
-pub fn fft3_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
+pub fn fft3_in_place_compute(data: &mut [u64], omega: u64, prime: u64) {
     let mut step = 1;
-    let big_omega = mod_pow(omega, (data.len() as u32 / 3), prime);
+    let max = u64::max_value() / prime / 3;
+    let big_omega = mod_pow(omega as i64, (data.len() as u32 / 3), prime as i64) as u64;
     let big_omega_sq = (big_omega * big_omega) % prime;
     while step < data.len() {
         let jump = 3 * step;
-        let factor_stride = mod_pow(omega, (data.len() / step / 3) as u32, prime);
+        let factor_stride =
+            mod_pow(omega as i64, (data.len() / step / 3) as u32, prime as i64) as u64;
         let mut factor = 1;
         for group in 0..step {
             let factor_sq = (factor * factor) % prime;
             let mut pair = group;
             while pair < data.len() {
-                let (x, y, z) = (data[pair],
-                                 (data[pair + step] * factor) % prime,
-                                 (data[pair + 2 * step] * factor_sq) % prime);
+                let (x, mut y, mut z) =
+                    (data[pair], data[pair + step] * factor, data[pair + 2 * step] * factor_sq);
 
-                data[pair] = (x + y + z) % prime;
-                data[pair + step] = (x + big_omega * y + big_omega_sq * z) % prime;
-                data[pair + 2 * step] = (x + big_omega_sq * y + big_omega * z) % prime;
+                maybe_reduce!(y, prime, max);
+                maybe_reduce!(z, prime, max);
+
+                data[pair] = x + y + z;
+                data[pair + step] = x + big_omega * y + big_omega_sq * z;
+                data[pair + 2 * step] = x + big_omega_sq * y + big_omega * z;
+
+                maybe_reduce!(data[pair], prime, max);
+                maybe_reduce!(data[pair + step], prime, max);
+                maybe_reduce!(data[pair + 2 * step], prime, max);
 
                 pair += jump;
             }
@@ -404,10 +436,11 @@ pub fn fft3_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
 }
 
 pub fn fft3_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    let mut data = a_coef.to_vec();
+    let mut data: Vec<u64> =
+        a_coef.iter().map(|i| (if *i > 0 { *i } else { i + prime }) as u64).collect();
     fft3_in_place_rearrange(&mut *data);
-    fft3_in_place_compute(&mut *data, omega, prime);
-    data
+    fft3_in_place_compute(&mut *data, omega as u64, prime as u64);
+    data.iter().map(|coef| (coef % prime as u64) as i64).collect()
 }
 
 pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
