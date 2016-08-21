@@ -175,10 +175,10 @@ pub fn fft2_in_place_rearrange(data: &mut [i64]) {
 
 pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
     let mut depth = 0;
-    while 1<<depth < data.len() {
-        let step = 1<<depth;
-        let jump = 2*step;
-        let factor_stride = mod_pow(omega, (data.len()/step/2) as u32, prime);
+    while 1 << depth < data.len() {
+        let step = 1 << depth;
+        let jump = 2 * step;
+        let factor_stride = mod_pow(omega, (data.len() / step / 2) as u32, prime);
         let mut factor = 1;
         for group in 0..step {
             let mut pair = group;
@@ -189,7 +189,7 @@ pub fn fft2_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
                 data[pair] = (data[pair] + product) % prime;
                 pair += jump;
             }
-            factor = (factor*factor_stride)%prime;
+            factor = (factor * factor_stride) % prime;
         }
         depth += 1;
     }
@@ -282,7 +282,7 @@ fn test_fft2_big() {
 /// `omega` must be a principal root of unity. `omega` degree must be equal
 /// to the `a_coef` length, and must be a power of 3.
 /// The result will contains the same number of elements.
-pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
+pub fn fft3_ref(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     if a_coef.len() == 1 {
         a_coef.to_vec()
     } else {
@@ -303,9 +303,9 @@ pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
 
         // recurse
         let omega_cubed = mod_pow(omega, 3, prime);
-        let b_point = fft3(&b_coef, omega_cubed, prime);
-        let c_point = fft3(&c_coef, omega_cubed, prime);
-        let d_point = fft3(&d_coef, omega_cubed, prime);
+        let b_point = fft3_ref(&b_coef, omega_cubed, prime);
+        let c_point = fft3_ref(&c_coef, omega_cubed, prime);
+        let d_point = fft3_ref(&d_coef, omega_cubed, prime);
 
         // combine
         let len = a_coef.len();
@@ -328,7 +328,6 @@ pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
             let x_squared = (x * x) % prime;
             a_point[j] = (b_point[i] + x * c_point[i] + x_squared * d_point[i]) % prime;
         }
-
         a_point
     }
 }
@@ -343,6 +342,95 @@ pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     a_coef
 }
 
+pub fn trigits_len(n: usize) -> usize {
+    let mut result = 1;
+    let mut value = 3;
+    while value < n + 1 {
+        result += 1;
+        value *= 3;
+    }
+    result
+}
+
+
+pub fn fft3_in_place_rearrange(data: &mut [i64]) {
+    let mut target = 0isize;
+    let trigits_len = trigits_len(data.len() - 1);
+    let mut trigits: Vec<u8> = ::std::iter::repeat(0).take(trigits_len).collect();
+    let mut powers: Vec<isize> = (0..trigits_len).map(|x| 3isize.pow(x as u32)).rev().collect();
+    for pos in 0..data.len() {
+        if target as usize > pos {
+            data.swap(target as usize, pos)
+        }
+        for pow in 0..trigits_len {
+            if trigits[pow] < 2 {
+                trigits[pow] += 1;
+                target += powers[pow];
+                break;
+            } else {
+                trigits[pow] = 0;
+                target -= 2 * powers[pow];
+            }
+        }
+    }
+}
+
+pub fn fft3_in_place_compute(data: &mut [i64], omega: i64, prime: i64) {
+    let mut step = 1;
+    let big_omega = mod_pow(omega, (data.len() as u32 / 3), prime);
+    let big_omega_sq = (big_omega * big_omega) % prime;
+    while step < data.len() {
+        let jump = 3 * step;
+        let factor_stride = mod_pow(omega, (data.len() / step / 3) as u32, prime);
+        let mut factor = 1;
+        for group in 0..step {
+            let factor_sq = (factor * factor) % prime;
+            let mut pair = group;
+            while pair < data.len() {
+                let (x, y, z) = (data[pair],
+                                 (data[pair + step] * factor) % prime,
+                                 (data[pair + 2 * step] * factor_sq) % prime);
+
+                data[pair] = (x + y + z) % prime;
+                data[pair + step] = (x + big_omega * y + big_omega_sq * z) % prime;
+                data[pair + 2 * step] = (x + big_omega_sq * y + big_omega * z) % prime;
+
+                pair += jump;
+            }
+            factor = (factor * factor_stride) % prime;
+        }
+        step = jump;
+    }
+}
+
+pub fn fft3_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
+    let mut data = a_coef.to_vec();
+    fft3_in_place_rearrange(&mut *data);
+    fft3_in_place_compute(&mut *data, omega, prime);
+    data
+}
+
+pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
+    fft3_in_place(a_coef, omega, prime)
+}
+
+#[test]
+fn test_trigits_len() {
+    assert_eq!(trigits_len(0), 1);
+    assert_eq!(trigits_len(1), 1);
+    assert_eq!(trigits_len(2), 1);
+    assert_eq!(trigits_len(3), 2);
+    assert_eq!(trigits_len(8), 2);
+    assert_eq!(trigits_len(9), 3);
+}
+
+#[test]
+fn test_fft3_in_place_rearrange() {
+    let mut input = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    fft3_in_place_rearrange(&mut input);
+    assert_eq!(input, [0, 3, 6, 1, 4, 7, 2, 5, 8]);
+}
+
 #[test]
 fn test_fft3() {
     // field is Z_433 in which 150 is an 9th root of unity
@@ -350,8 +438,41 @@ fn test_fft3() {
     let omega = 150;
 
     let a_coef = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let a_point = fft3(&a_coef, omega, prime);
+    let a_point = positivise(&*fft3_in_place(&a_coef, omega, prime), prime);
     assert_eq!(a_point, vec![45, 404, 407, 266, 377, 47, 158, 17, 20])
+}
+
+
+#[test]
+fn test_fft3_variants() {
+    let prime = 433;
+    let omega = 198;
+    for example in &[vec![1, 0, 0], vec![0, 1, 0], vec![0, 0, 1], vec![1, 1, 1]] {
+        let a_point_ref = positivise(&*fft3(&*example, omega, prime), prime);
+        let a_in_place = positivise(&*fft3_in_place(&*example, omega, prime), prime);
+        assert_eq!(a_in_place, a_point_ref);
+    }
+
+    let prime = 433;
+    let omega = 27;
+    for example in &[vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+                     vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
+                     vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
+                     vec![0, 0, 0, 1, 0, 0, 0, 0, 0],
+                     vec![1, 0, 0, 1, 0, 0, 1, 0, 0],
+                     vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+                     vec![1, 2, 3, 4, 5, 6, 7, 8, 9]] {
+        let a_point_ref = positivise(&*fft3(&*example, omega, prime), prime);
+        let a_in_place = positivise(&*fft3_in_place(&*example, omega, prime), prime);
+        assert_eq!(a_in_place, a_point_ref);
+    }
+
+    let prime = 5038849;
+    let omega = 1814687;
+    let example: Vec<i64> = (0..19683).collect();
+    let a_point_ref = positivise(&*fft3(&*example, omega, prime), prime);
+    let a_in_place = positivise(&*fft3_in_place(&*example, omega, prime), prime);
+    assert_eq!(a_in_place, a_point_ref);
 }
 
 #[test]
@@ -363,6 +484,18 @@ fn test_fft3_inverse() {
     let a_point = vec![45, 404, 407, 266, 377, 47, 158, 17, 20];
     let a_coef = fft3_inverse(&a_point, omega, prime);
     assert_eq!(a_coef, vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
+}
+
+#[test]
+fn test_fft3_big() {
+    let prime = 5038849;
+    let omega = 1814687;
+
+    let a_coef: Vec<i64> = (0..19683).collect();
+    let a_point = fft3(&a_coef, omega, prime);
+    let a_coef_back = fft3_inverse(&a_point, omega, prime);
+
+    assert_eq!(positivise(&*a_coef_back, prime), a_coef);
 }
 
 /// Performs a Lagrange interpolation at origin for a Zp polynomial defined by points.
