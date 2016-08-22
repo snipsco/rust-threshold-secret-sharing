@@ -193,7 +193,9 @@ pub fn fft3_inverse<F:Field>(zp: &F, a_point: &[F::U], omega: F::U) -> Vec<F::U>
 
 macro_rules! all_fields_test {
     ($field:ty) => {
+        #[test] fn test_convert() { super::test_convert::<$field>(); }
         #[test] fn test_add() { super::test_add::<$field>(); }
+        #[test] fn test_sub() { super::test_sub::<$field>(); }
         #[test] fn test_mul() { super::test_mul::<$field>(); }
         #[test] fn test_qpow() { super::test_qpow::<$field>(); }
         #[test ]fn test_fft2() { super::test_fft2::<$field>(); }
@@ -207,12 +209,28 @@ macro_rules! all_fields_test {
 
 pub mod naive_zp;
 pub mod lazy_zp;
+pub mod montgomery;
+
+#[cfg(test)]
+fn test_convert<F: ZpField>() {
+    let zp = F::new(17);
+    for i in 0u64..20 {
+        assert_eq!(zp.back(zp.from(i)), i % 17);
+    }
+}
 
 #[cfg(test)]
 fn test_add<F: ZpField>() {
     let zp = F::new(17);
     assert_eq!(zp.back(zp.add(zp.from(8), zp.from(2))), 10);
     assert_eq!(zp.back(zp.add(zp.from(8), zp.from(13))), 4);
+}
+
+#[cfg(test)]
+fn test_sub<F: ZpField>() {
+    let zp = F::new(17);
+    assert_eq!(zp.back(zp.sub(zp.from(8), zp.from(2))), 6);
+    assert_eq!(zp.back(zp.sub(zp.from(8), zp.from(13))), 12);
 }
 
 #[cfg(test)]

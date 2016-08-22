@@ -1,5 +1,7 @@
 #![feature(test)]
 
+// http://www.hackersdelight.org/MontgomeryMultiplication.pdf
+
 extern crate test;
 extern crate threshold_secret_sharing as tss;
 
@@ -40,6 +42,10 @@ mod naive_zp {
 
 mod lazy_zp {
     all_fields_test!(::tss::fields::lazy_zp::ZprimeField64);
+}
+
+mod montgomery {
+    all_fields_test!(::tss::fields::montgomery::ZprimeField64);
 }
 
 fn bench_fft2<F: ZpField>(b: &mut test::Bencher) {

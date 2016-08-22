@@ -21,14 +21,6 @@ impl ZprimeField64 {
     }
 }
 
-macro_rules! maybe_reduce {
-    ($target:expr, $prime:ident, $max:ident) => {
-        if $target > $max {
-            $target %= $prime;
-        }
-    }
-}
-
 impl Field for ZprimeField64 {
     type U = ZprimeU64;
 
