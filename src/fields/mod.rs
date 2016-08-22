@@ -158,7 +158,7 @@ pub fn fft3_in_place_compute<F:Field>(zp: &F, data: &mut [F::U], omega: F::U) {
         let factor_stride = zp.optimize(zp.qpow(omega, (data.len() / step / 3) as u32));
         let mut factor = zp.one();
         for group in 0usize..step {
-            let factor_sq = zp.optimize(zp.mul(factor, factor));
+            let factor_sq = zp.mul(factor, factor);
             let mut pair = group;
             while pair < data.len() {
                 let (x, y, z) =
