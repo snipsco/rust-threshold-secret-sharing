@@ -9,77 +9,64 @@
 use super::{Field, ZpField};
 
 #[derive(Copy,Clone,Debug)]
-pub struct ZprimeU64(pub u64);
+pub struct ZprimeU32(pub u32);
 
-pub struct ZprimeField64 {
-    pub n: u64, // the prime
-    pub n_quote: u64,
-    pub r_inv: u64, // r = 2^32
+pub struct ZprimeField32 {
+    pub n: u32, // the prime
+    pub n_quote: u32,
+    pub r_inv: u32, // r = 2^32
 }
 
-impl ZprimeField64 {
-    pub fn new(prime: u64) -> ZprimeField64 {
+impl ZprimeField32 {
+    pub fn new(prime: u32) -> ZprimeField32 {
         let r = 1u64 << 32;
         let tmp = ::numtheory::mod_inverse(r as i64, prime as i64);
         let r_inv = if tmp < 0 {
-            (tmp + prime as i64) as u64
+            (tmp + prime as i64) as u32
         } else {
-            tmp as u64
+            tmp as u32
         };
         let tmp = ::numtheory::mod_inverse(prime as i64, r as i64);
         let n_quote = if tmp > 0 {
-            (r as i64 - tmp) as u64
+            (r as i64 - tmp) as u32
         } else {
-            (r as i64-tmp) as u64
+            (r as i64-tmp) as u32
         };
-        ZprimeField64 {
+        ZprimeField32 {
             n: prime,
             r_inv: r_inv,
             n_quote: n_quote,
         }
     }
 
-    pub fn mul_r(&self, a: u64) -> u64 {
-        a << 32
-    }
-
-    pub fn mod_r(&self, a: u64) -> u64 {
-        a & (0xFFFF_FFFF as u64)
-    }
-
-    pub fn div_r(&self, a: u64) -> u64 {
-        a >> 32
-    }
-
-    fn redc(&self, a: u64) -> ZprimeU64 {
-        let m = self.mod_r(self.mod_r(a).wrapping_mul(self.n_quote));
-        let t = self.div_r(a + m * self.n);
-        ZprimeU64(if t >= self.n { t - self.n } else { t })
+    fn redc(&self, a: u64) -> ZprimeU32 {
+        let m:u64 = (a as u32).wrapping_mul(self.n_quote) as u64;
+        let t:u32 = ((a + m * (self.n as u64)) >> 32) as u32;
+        ZprimeU32((if t >= (self.n) { t - (self.n) } else { t }))
     }
 }
 
-impl Field for ZprimeField64 {
-    type U = ZprimeU64;
+impl Field for ZprimeField32 {
+    type U = ZprimeU32;
 
     fn from(&self, a: u64) -> Self::U {
-        ZprimeU64(self.mul_r(a) % self.n)
+        ZprimeU32(((a << 32) % self.n as u64) as u32)
     }
 
     fn back(&self, a: Self::U) -> u64 {
-        a.0 * self.r_inv % self.n
+        a.0 as u64 * self.r_inv as u64 % self.n as u64
     }
 
     fn add(&self, a: Self::U, b: Self::U) -> Self::U {
-        ZprimeU64(self.mod_r(a.0.wrapping_add(b.0)))
+        ZprimeU32(a.0.wrapping_add(b.0))
     }
 
     fn sub(&self, a: Self::U, b: Self::U) -> Self::U {
-        unimplemented!();
-        //        ZprimeU64(a.0.wrapping_sub(b.0) & 0x0000_0000_FFFF_FFFFu64)
+        ZprimeU32(a.0.wrapping_sub(b.0))
     }
 
     fn mul(&self, a: Self::U, b: Self::U) -> Self::U {
-        self.redc(a.0.wrapping_mul(b.0))
+        self.redc((a.0 as u64).wrapping_mul(b.0 as u64))
     }
 
     fn inv(&self, a: Self::U) -> Self::U {
@@ -88,10 +75,10 @@ impl Field for ZprimeField64 {
     }
 }
 
-impl ZpField for ZprimeField64 {
-    fn new(prime: u64) -> ZprimeField64 {
-        ZprimeField64::new(prime)
+impl ZpField for ZprimeField32 {
+    fn new(prime: u64) -> ZprimeField32 {
+        ZprimeField32::new(prime as u32)
     }
 }
 
-all_fields_test!(ZprimeField64);
+all_fields_test!(ZprimeField32);
