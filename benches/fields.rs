@@ -45,7 +45,7 @@ mod lazy_zp {
 }
 
 mod montgomery {
-    all_fields_test!(::tss::fields::montgomery::ZprimeField64);
+    all_fields_test!(::tss::fields::montgomery::ZprimeField32);
 }
 
 fn bench_fft2<F: ZpField>(b: &mut test::Bencher) {

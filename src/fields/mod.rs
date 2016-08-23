@@ -230,14 +230,14 @@ fn test_add<F: ZpField>() {
 fn test_sub<F: ZpField>() {
     let zp = F::new(17);
     assert_eq!(zp.back(zp.sub(zp.from(8), zp.from(2))), 6);
-    assert_eq!(zp.back(zp.sub(zp.from(8), zp.from(13))), 12);
+    assert_eq!(zp.back(zp.sub(zp.from(8), zp.from(13))), (17+8-13) % 17);
 }
 
 #[cfg(test)]
 fn test_mul<F: ZpField>() {
     let zp = F::new(17);
-    assert_eq!(zp.back(zp.mul(zp.from(8), zp.from(2))), 16);
-    assert_eq!(zp.back(zp.mul(zp.from(8), zp.from(5))), 6);
+    assert_eq!(zp.back(zp.mul(zp.from(8), zp.from(2))), (8*2)%17);
+    assert_eq!(zp.back(zp.mul(zp.from(8), zp.from(5))), (8*5)%17);
 }
 
 #[cfg(test)]

@@ -58,11 +58,20 @@ impl Field for ZprimeField32 {
     }
 
     fn add(&self, a: Self::U, b: Self::U) -> Self::U {
-        ZprimeU32(a.0.wrapping_add(b.0))
+        let sum = a.0 as u64 + b.0 as u64;
+        if sum > self.n as u64 {
+            ZprimeU32((sum - self.n as u64) as u32)
+        } else {
+            ZprimeU32(sum as u32)
+        }
     }
 
     fn sub(&self, a: Self::U, b: Self::U) -> Self::U {
-        ZprimeU32(a.0.wrapping_sub(b.0))
+        if a.0 > b.0 {
+            ZprimeU32(a.0 - b.0)
+        } else {
+            ZprimeU32((a.0 as u64 + self.n as u64 - b.0 as u64) as u32)
+        }
     }
 
     fn mul(&self, a: Self::U, b: Self::U) -> Self::U {
