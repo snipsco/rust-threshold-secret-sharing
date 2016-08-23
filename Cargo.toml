@@ -23,3 +23,18 @@ paramgen = ["primal"]
 [dependencies]
 rand = "0.3.*"
 primal = { version = "0.2", optional = true }
+
+[dev-dependencies]
+bencher = "0.1"
+
+[[bench]]
+name = "fields"
+harness = false
+
+[[bench]]
+name = "numtheory"
+harness = false
+
+[[bench]]
+name = "packed"
+harness = false
