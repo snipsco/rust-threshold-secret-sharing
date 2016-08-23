@@ -30,7 +30,7 @@ impl ZprimeField32 {
         let n_quote = if tmp > 0 {
             (r as i64 - tmp) as u32
         } else {
-            (r as i64-tmp) as u32
+            (r as i64 - tmp) as u32
         };
         ZprimeField32 {
             n: prime,
@@ -40,8 +40,8 @@ impl ZprimeField32 {
     }
 
     fn redc(&self, a: u64) -> ZprimeU32 {
-        let m:u64 = (a as u32).wrapping_mul(self.n_quote) as u64;
-        let t:u32 = ((a + m * (self.n as u64)) >> 32) as u32;
+        let m: u64 = (a as u32).wrapping_mul(self.n_quote) as u64;
+        let t: u32 = ((a + m * (self.n as u64)) >> 32) as u32;
         ZprimeU32((if t >= (self.n) { t - (self.n) } else { t }))
     }
 }
