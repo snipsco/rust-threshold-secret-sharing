@@ -9,19 +9,19 @@
 use super::{Field, ZpField};
 
 #[derive(Copy,Clone,Debug)]
-pub struct ZprimeU64(pub u64);
+pub struct ZprimeU64(pub i64);
 
-pub struct ZprimeField64(pub u64);
+pub struct ZprimeField64(pub i64);
 
 impl Field for ZprimeField64 {
     type U = ZprimeU64;
 
     fn from(&self, a: u64) -> Self::U {
-        ZprimeU64(a % self.0)
+        ZprimeU64(a as i64 % self.0)
     }
 
     fn back(&self, a: Self::U) -> u64 {
-        a.0
+        a.0 as u64
     }
 
     fn add(&self, a: Self::U, b: Self::U) -> Self::U {
@@ -29,7 +29,12 @@ impl Field for ZprimeField64 {
     }
 
     fn sub(&self, a: Self::U, b: Self::U) -> Self::U {
-        ZprimeU64((a.0 - b.0) % self.0)
+        let tmp = a.0 - b.0;
+        if tmp > 0 {
+            ZprimeU64(tmp)
+        } else {
+            ZprimeU64(tmp + self.0)
+        }
     }
 
     fn mul(&self, a: Self::U, b: Self::U) -> Self::U {
@@ -44,7 +49,7 @@ impl Field for ZprimeField64 {
 
 impl ZpField for ZprimeField64 {
     fn new(prime: u64) -> ZprimeField64 {
-        ZprimeField64(prime)
+        ZprimeField64(prime as i64)
     }
 }
 
