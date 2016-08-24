@@ -91,7 +91,7 @@ fn fft2_rec_stride(a_coef: &[i64],
     }
 }
 
-pub fn fft2_in_place_rearrange(data: &mut [u64]) {
+pub fn fft2_in_place_rearrange<T:Copy>(data: &mut [T]) {
     let mut target = 0;
     for pos in 0..data.len() {
         if target > pos {
@@ -103,6 +103,31 @@ pub fn fft2_in_place_rearrange(data: &mut [u64]) {
             mask >>= 1;
         }
         target |= mask;
+    }
+}
+
+pub fn fft2_in_place_compute_eager(data: &mut [i64], omega: i64, prime: i64) {
+    let mut depth = 0;
+    while 1 << depth < data.len() {
+        let step = 1 << depth;
+        let jump = 2 * step;
+        let factor_stride =
+            mod_pow(omega as i64, (data.len() / step / 2) as u32, prime as i64);
+        let mut factor = 1;
+        for group in 0..step {
+            let mut pair = group;
+            while pair < data.len() {
+                let x = data[pair];
+                let y = (data[pair + step] * factor) % prime;
+
+                data[pair] = (x + y) % prime;
+                data[pair + step] = (x - y) % prime;
+
+                pair += jump;
+            }
+            factor = (factor * factor_stride) % prime;
+        }
+        depth += 1;
     }
 }
 
@@ -123,7 +148,7 @@ pub fn fft2_in_place_compute(data: &mut [u64], omega: u64, prime: u64) {
                 maybe_reduce!(y, prime, max);
 
                 data[pair] = x + y;
-                data[pair + step] = x + big_omega * y;
+                data[pair + step] = x + y*big_omega;
 
                 maybe_reduce!(data[pair], prime, max);
                 maybe_reduce!(data[pair + step], prime, max);
@@ -134,6 +159,13 @@ pub fn fft2_in_place_compute(data: &mut [u64], omega: u64, prime: u64) {
         }
         depth += 1;
     }
+}
+
+pub fn fft2_in_place_eager(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
+    let mut data = a_coef.to_vec();
+    fft2_in_place_rearrange(&mut *data);
+    fft2_in_place_compute_eager(&mut *data, omega, prime);
+    data
 }
 
 pub fn fft2_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
@@ -173,8 +205,10 @@ fn test_fft2_variants() {
         let rec = positivise(&*fft2_rec(&*example, omega, prime), prime);
         let rec_stride = positivise(&*fft2_stride(&*example, omega, prime), prime);
         let in_place = positivise(&*fft2_in_place(&*example, omega, prime), prime);
+        let in_place_eager = positivise(&*fft2_in_place_eager(&*example, omega, prime), prime);
         assert_eq!(rec, rec_stride);
         assert_eq!(rec, in_place);
+        assert_eq!(rec, in_place_eager);
     }
     let prime = 433;
     let omega = 354;
@@ -187,8 +221,10 @@ fn test_fft2_variants() {
         let rec = positivise(&*fft2_rec(&*example, omega, prime), prime);
         let rec_stride = positivise(&*fft2_stride(&*example, omega, prime), prime);
         let in_place = positivise(&*fft2_in_place(&*example, omega, prime), prime);
+        let in_place_eager = positivise(&*fft2_in_place_eager(&*example, omega, prime), prime);
         assert_eq!(rec, rec_stride);
         assert_eq!(rec, in_place);
+        assert_eq!(rec, in_place_eager);
     }
 }
 
@@ -311,7 +347,7 @@ pub fn trigits_len(n: usize) -> usize {
     result
 }
 
-pub fn fft3_in_place_rearrange(data: &mut [u64]) {
+pub fn fft3_in_place_rearrange<T:Copy>(data: &mut [T]) {
     let mut target = 0isize;
     let trigits_len = trigits_len(data.len() - 1);
     let mut trigits: Vec<u8> = ::std::iter::repeat(0).take(trigits_len).collect();
@@ -369,12 +405,48 @@ pub fn fft3_in_place_compute(data: &mut [u64], omega: u64, prime: u64) {
     }
 }
 
+pub fn fft3_in_place_compute_eager(data: &mut [i64], omega: i64, prime: i64) {
+    let mut step = 1;
+    let big_omega = mod_pow(omega as i64, (data.len() as u32 / 3), prime as i64);
+    let big_omega_sq = (big_omega * big_omega) % prime;
+    while step < data.len() {
+        let jump = 3 * step;
+        let factor_stride =
+            mod_pow(omega, (data.len() / step / 3) as u32, prime);
+        let mut factor = 1;
+        for group in 0..step {
+            let factor_sq = (factor * factor) % prime;
+            let mut pair = group;
+            while pair < data.len() {
+                let (x, y, z) =
+                    (data[pair], (data[pair + step] * factor) % prime, (data[pair + 2 * step] * factor_sq)%prime);
+
+                data[pair] = (x + y + z) % prime;
+                data[pair + step] = (x + big_omega * y + big_omega_sq * z) % prime;
+                data[pair + 2 * step] = (x + big_omega_sq * y + big_omega * z ) % prime;
+
+                pair += jump;
+            }
+            factor = (factor * factor_stride) % prime;
+        }
+        step = jump;
+    }
+}
+
+
 pub fn fft3_in_place(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     let mut data: Vec<u64> =
         a_coef.iter().map(|i| (if *i > 0 { *i } else { i + prime }) as u64).collect();
     fft3_in_place_rearrange(&mut *data);
     fft3_in_place_compute(&mut *data, omega as u64, prime as u64);
     data.iter().map(|coef| (coef % prime as u64) as i64).collect()
+}
+
+pub fn fft3_in_place_eager(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
+    let mut data: Vec<i64> = a_coef.to_vec();
+    fft3_in_place_rearrange(&mut *data);
+    fft3_in_place_compute_eager(&mut *data, omega, prime);
+    data
 }
 
 #[test]
@@ -409,15 +481,17 @@ fn test_fft3_variants() {
     let prime = 433;
     let omega = 27;
     for example in &[vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
-                     vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
-                     vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
-                     vec![0, 0, 0, 1, 0, 0, 0, 0, 0],
-                     vec![1, 0, 0, 1, 0, 0, 1, 0, 0],
-                     vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
-                     vec![1, 2, 3, 4, 5, 6, 7, 8, 9]] {
+    vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
+    vec![1, 0, 0, 0, 0, 0, 0, 0, 0],
+    vec![0, 0, 0, 1, 0, 0, 0, 0, 0],
+    vec![1, 0, 0, 1, 0, 0, 1, 0, 0],
+    vec![1, 1, 1, 1, 1, 1, 1, 1, 1],
+    vec![1, 2, 3, 4, 5, 6, 7, 8, 9]] {
         let a_point_ref = positivise(&*fft3(&*example, omega, prime), prime);
         let a_in_place = positivise(&*fft3_in_place(&*example, omega, prime), prime);
+        let a_in_place_eager = positivise(&*fft3_in_place_eager(&*example, omega, prime), prime);
         assert_eq!(a_in_place, a_point_ref);
+        assert_eq!(a_in_place_eager, a_point_ref);
     }
 
     let prime = 5038849;

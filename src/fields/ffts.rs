@@ -17,7 +17,6 @@ fn fft2_in_place_rearrange<F: Field>(_zp: &F, data: &mut [F::U]) {
 
 fn fft2_in_place_compute<F: Field>(zp: &F, data: &mut [F::U], omega: F::U) {
     let mut depth = 0usize;
-    let big_omega = zp.optimize(zp.qpow(omega, data.len() as u32 / 2));
     while 1usize << depth < data.len() {
         let step = 1usize << depth;
         let jump = 2 * step;
@@ -29,7 +28,7 @@ fn fft2_in_place_compute<F: Field>(zp: &F, data: &mut [F::U], omega: F::U) {
                 let (x, y) = (data[pair], zp.mul(data[pair + step], factor));
 
                 data[pair] = zp.add(x, y);
-                data[pair + step] = zp.add(x, zp.mul(big_omega, y));
+                data[pair + step] = zp.sub(x, y);
 
                 pair += jump;
             }

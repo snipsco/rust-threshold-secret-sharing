@@ -25,19 +25,11 @@ impl Field for ZprimeField64 {
     }
 
     fn add(&self, a: Self::U, b: Self::U) -> Self::U {
-        if a.0 + b.0 >= self.0 {
-            ZprimeU64(a.0 + b.0 - self.0)
-        } else {
-            ZprimeU64(a.0 + b.0)
-        }
+        ZprimeU64((a.0 + b.0) % self.0)
     }
 
     fn sub(&self, a: Self::U, b: Self::U) -> Self::U {
-        if a.0 < b.0 {
-            ZprimeU64(a.0 + self.0 - b.0)
-        } else {
-            ZprimeU64(a.0 - b.0)
-        }
+        ZprimeU64((a.0 - b.0) % self.0)
     }
 
     fn mul(&self, a: Self::U, b: Self::U) -> Self::U {
