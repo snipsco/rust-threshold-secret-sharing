@@ -73,54 +73,31 @@ fn test_mod_pow() {
 }
 
 
-/// Compute recursively the 2-radix FFT of `a_coef` in the *Zp* field defined
-/// by `prime`.
+/// Compute the 2-radix FFT of `a_coef` in the *Zp* field defined by `prime`.
 ///
 /// `omega` must be a principal root of unity. `omega` degree must be equal
 /// to the `a_coef` length, and must be a power of 2.
 /// The result will contains the same number of elements.
 pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    if a_coef.len() == 1 {
-        a_coef.to_vec()
-    } else {
-        // split A(x) into B(x) and C(x): A(x) = B(x^2) + x C(x^2)
-        // TODO avoid copying
-        let b_coef: Vec<i64> = a_coef.iter()
-            .enumerate()
-            .filter_map(|(x, &i)| if x % 2 == 0 { Some(i) } else { None })
-            .collect();
-        let c_coef: Vec<i64> = a_coef.iter()
-            .enumerate()
-            .filter_map(|(x, &i)| if x % 2 == 1 { Some(i) } else { None })
-            .collect();
+    use fields::Field;
+    let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
 
-        // recurse
-        let b_point = fft2(&b_coef, mod_pow(omega, 2, prime), prime);
-        let c_point = fft2(&c_coef, mod_pow(omega, 2, prime), prime);
-
-        // combine
-        let len = a_coef.len();
-        let half_len = len >> 1;
-        let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
-        for i in 0..half_len {
-            a_point[i] = (b_point[i] + mod_pow(omega, i as u32, prime) * c_point[i]) % prime;
-            a_point[i + half_len] = (b_point[i] - mod_pow(omega, i as u32, prime) * c_point[i]) %
-                                    prime;
-        }
-
-        // return
-        a_point
-    }
+    let mut data = a_coef.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
+    ::fields::fft::fft2(&zp, &mut *data, zp.from_i64(omega));
+    data.iter().map(|a| zp.to_i64(*a)).collect()
 }
 
 /// Inverse FFT for `fft2`.
 pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    let omega_inv = mod_inverse(omega, prime);
-    let len = a_point.len();
-    let len_inv = mod_inverse(len as i64, prime);
-    let scaled_a_coef = fft2(a_point, omega_inv, prime);
-    let a_coef = scaled_a_coef.iter().map(|x| x * len_inv % prime).collect();
-    a_coef
+    use fields::Field;
+    let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
+
+    let omega_inv = zp.inv(zp.from_i64(omega));
+    let mut data = a_point.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
+    ::fields::fft::fft2(&zp, &mut data, omega_inv);
+
+    let len_inv = zp.inv(zp.from_u64(a_point.len() as u64));
+    data.iter().map(|&x| zp.to_i64(zp.mul(x, len_inv))).collect()
 }
 
 #[test]
@@ -131,7 +108,8 @@ fn test_fft2() {
 
     let a_coef = vec![1, 2, 3, 4, 5, 6, 7, 8];
     let a_point = fft2(&a_coef, omega, prime);
-    assert_eq!(a_point, vec![36, -130, -287, 3, -4, 422, 279, -311])
+    assert_eq!(positivise(&a_point, prime),
+               positivise(&[36, -130, -287, 3, -4, 422, 279, -311], prime))
 }
 
 #[test]
@@ -145,72 +123,31 @@ fn test_fft2_inverse() {
     assert_eq!(positivise(&a_coef, prime), vec![1, 2, 3, 4, 5, 6, 7, 8])
 }
 
-/// Compute recursively the 3-radix FFT of `a_coef` in the *Zp* field defined
-/// by `prime`.
+/// Compute the 3-radix FFT of `a_coef` in the *Zp* field defined by `prime`.
 ///
 /// `omega` must be a principal root of unity. `omega` degree must be equal
 /// to the `a_coef` length, and must be a power of 3.
 /// The result will contains the same number of elements.
 pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    if a_coef.len() == 1 {
-        a_coef.to_vec()
-    } else {
-        // split A(x) into B(x), C(x), and D(x): A(x) = B(x^3) + x C(x^3) + x^2 D(x^3)
-        // TODO avoid copying
-        let b_coef: Vec<i64> = a_coef.iter()
-            .enumerate()
-            .filter_map(|(x, &i)| if x % 3 == 0 { Some(i) } else { None })
-            .collect();
-        let c_coef: Vec<i64> = a_coef.iter()
-            .enumerate()
-            .filter_map(|(x, &i)| if x % 3 == 1 { Some(i) } else { None })
-            .collect();
-        let d_coef: Vec<i64> = a_coef.iter()
-            .enumerate()
-            .filter_map(|(x, &i)| if x % 3 == 2 { Some(i) } else { None })
-            .collect();
+    use fields::Field;
+    let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
 
-        // recurse
-        let omega_cubed = mod_pow(omega, 3, prime);
-        let b_point = fft3(&b_coef, omega_cubed, prime);
-        let c_point = fft3(&c_coef, omega_cubed, prime);
-        let d_point = fft3(&d_coef, omega_cubed, prime);
-
-        // combine
-        let len = a_coef.len();
-        let third_len = len / 3;
-        let mut a_point = vec![0; len];  // TODO trick: unsafe { Vec.set_len() }
-        for i in 0..third_len {
-
-            let j = i;
-            let x = mod_pow(omega, j as u32, prime);
-            let x_squared = (x * x) % prime;
-            a_point[j] = (b_point[i] + x * c_point[i] + x_squared * d_point[i]) % prime;
-
-            let j = i + third_len;
-            let x = mod_pow(omega, j as u32, prime);
-            let x_squared = (x * x) % prime;
-            a_point[j] = (b_point[i] + x * c_point[i] + x_squared * d_point[i]) % prime;
-
-            let j = i + third_len + third_len;
-            let x = mod_pow(omega, j as u32, prime);
-            let x_squared = (x * x) % prime;
-            a_point[j] = (b_point[i] + x * c_point[i] + x_squared * d_point[i]) % prime;
-        }
-
-        // return
-        a_point
-    }
+    let mut data = a_coef.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
+    ::fields::fft::fft3(&zp, &mut *data, zp.from_i64(omega));
+    data.iter().map(|a| zp.to_i64(*a)).collect()
 }
 
 /// Inverse FFT for `fft3`.
 pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
-    let omega_inv = mod_inverse(omega, prime);
-    let len = a_point.len();
-    let len_inv = mod_inverse(len as i64, prime);
-    let scaled_a_coef = fft3(a_point, omega_inv, prime);
-    let a_coef = scaled_a_coef.iter().map(|x| x * len_inv % prime).collect();
-    a_coef
+    use fields::Field;
+    let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
+
+    let omega_inv = zp.inv(zp.from_i64(omega));
+    let mut data = a_point.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
+    ::fields::fft::fft3(&zp, &mut data, omega_inv);
+
+    let len_inv = zp.inv(zp.from_u64(a_point.len() as u64));
+    data.iter().map(|&x| zp.to_i64(zp.mul(x, len_inv))).collect()
 }
 
 #[test]
@@ -220,7 +157,7 @@ fn test_fft3() {
     let omega = 150;
 
     let a_coef = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let a_point = fft3(&a_coef, omega, prime);
+    let a_point = positivise(&fft3(&a_coef, omega, prime), prime);
     assert_eq!(a_point, vec![45, 404, 407, 266, 377, 47, 158, 17, 20])
 }
 
@@ -231,7 +168,7 @@ fn test_fft3_inverse() {
     let omega = 150;
 
     let a_point = vec![45, 404, 407, 266, 377, 47, 158, 17, 20];
-    let a_coef = fft3_inverse(&a_point, omega, prime);
+    let a_coef = positivise(&fft3_inverse(&a_point, omega, prime), prime);
     assert_eq!(a_coef, vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
 }
 
