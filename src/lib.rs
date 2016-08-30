@@ -18,3 +18,4 @@ pub mod numtheory;
 
 pub mod shamir;
 pub mod packed;
+pub mod fields;

@@ -208,7 +208,7 @@ mod tests {
         let secrets = vec![1, 2, 3];
         let randomness = vec![8, 8, 8, 8];  // use fixed randomness
         let poly = pss.recover_polynomial(&secrets, randomness);
-        assert_eq!(poly, vec![113, -382, -172, 267, -325, 432, 388, -321]);
+        assert_eq!(positivise(&poly, pss.prime), positivise(&[113, -382, -172, 267, -325, 432, 388, -321], pss.prime));
     }
 
     #[test]
@@ -217,7 +217,7 @@ mod tests {
         let ref pss = PSS_4_26_3;
         let poly = vec![113, 51, 261, 267, 108, 432, 388, 112, 0, 0, 0,
                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let points = pss.evaluate_polynomial(poly);
+        let points = positivise(&pss.evaluate_polynomial(poly), pss.prime);
         assert_eq!(points, vec![ 0, 77, 230, 91, 286, 179, 337, 83, 212, 88,
                         406, 58, 425, 345, 350, 336, 430, 404, 51, 60, 305,
                         395, 84, 156, 160, 112, 422]);
