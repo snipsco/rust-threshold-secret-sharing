@@ -92,12 +92,9 @@ pub fn fft2_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     use fields::Field;
     let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
 
-    let omega_inv = zp.inv(zp.from_i64(omega));
     let mut data = a_point.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
-    ::fields::fft::fft2(&zp, &mut data, omega_inv);
-
-    let len_inv = zp.inv(zp.from_u64(a_point.len() as u64));
-    data.iter().map(|&x| zp.to_i64(zp.mul(x, len_inv))).collect()
+    ::fields::fft::fft2_inverse(&zp, &mut *data, zp.from_i64(omega));
+    data.iter().map(|a| zp.to_i64(*a)).collect()
 }
 
 #[test]
@@ -142,12 +139,9 @@ pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     use fields::Field;
     let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
 
-    let omega_inv = zp.inv(zp.from_i64(omega));
     let mut data = a_point.iter().map(|&a| zp.from_i64(a)).collect::<Vec<_>>();
-    ::fields::fft::fft3(&zp, &mut data, omega_inv);
-
-    let len_inv = zp.inv(zp.from_u64(a_point.len() as u64));
-    data.iter().map(|&x| zp.to_i64(zp.mul(x, len_inv))).collect()
+    ::fields::fft::fft3_inverse(&zp, &mut *data, zp.from_i64(omega));
+    data.iter().map(|a| zp.to_i64(*a)).collect()
 }
 
 #[test]
