@@ -79,9 +79,6 @@ pub trait Field {
     ///
     /// Implements exponentiation by squaring.
     fn qpow(&self, mut x: Self::U, mut e: u32) -> Self::U {
-        if e == 0 {
-            return self.one();
-        }
         let mut acc = self.one();
         while e > 0 {
             if e % 2 == 0 {
