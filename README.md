@@ -13,7 +13,7 @@ Efficient pure-Rust library for [secret sharing](https://en.wikipedia.org/wiki/S
 ## Cargo
 ```toml
 [dependencies]
-threshold_secret_sharing = "0.1.0"
+threshold-secret-sharing = "0.1.1"
 ```
 
 
