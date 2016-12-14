@@ -435,7 +435,8 @@ mod paramgen {
     }
 
     fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
-        let (prime, g) = find_field(min_size, n, m).unwrap(); // TODO settle option business once and for all (don't remember it as needed)
+        // TODO settle option business once and for all (don't remember it as needed)
+        let (prime, g) = find_field(min_size, n, m).unwrap();
         let (omega_secrets, omega_shares) = find_roots(n, m, prime, g);
         (prime, omega_secrets, omega_shares)
     }
