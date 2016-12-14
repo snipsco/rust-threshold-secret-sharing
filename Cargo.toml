@@ -1,6 +1,6 @@
 [package]
 name = "threshold-secret-sharing"
-version = "0.2.1"
+version = "0.2.0"
 authors = [
   "Morten Dahl",
   "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"
