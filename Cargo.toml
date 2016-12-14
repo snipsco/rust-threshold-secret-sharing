@@ -1,6 +1,6 @@
 [package]
 name = "threshold-secret-sharing"
-version = "0.1.2"
+version = "0.2.1"
 authors = [
   "Morten Dahl",
   "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"
@@ -11,8 +11,8 @@ keywords = [
   "Shamir",
   "packed",
   "secure-computation",
+  "multiparty-computation",
   "MPC",
-  "multi-party-computation",
   "crypto",
   "cryptography"
 ]
