@@ -6,17 +6,18 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
-//! Unmodified [Shamir Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) scheme.
+//! Standard [Shamir secret sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
+//! for a single secret.
 
 use rand;
 use numtheory::*;
 
-/// Shamir Secret Sharing settings.
+/// Parameters for the Shamir scheme, specifying privacy threshold and total number of shares.
 ///
 /// There are very few constraints except for the obvious ones:
 ///
-/// * prime must be a prime, big enough to hold the secrets we plan to share
-/// * parts must be > threshold
+/// * `prime` must be a prime large enough to hold the secrets we plan to share
+/// * `share_count` must be at least `threshold + 1` (the reconstruction limit)
 ///
 /// # Example:
 ///
@@ -24,14 +25,14 @@ use numtheory::*;
 ///    use threshold_secret_sharing::shamir;
 ///    let tss = shamir::ShamirSecretSharing {
 ///        threshold: 9,
-///        parts: 20,
+///        share_count: 20,
 ///        prime: 41
 ///    };
 ///
 ///    let secret = 5;
 ///    let all_shares = tss.share(secret);
 ///
-///    let reconstruct_share_count = tss.threshold + 1;
+///    let reconstruct_share_count = tss.reconstruct_limit();
 ///
 ///    let indices: Vec<usize> = (0..reconstruct_share_count).collect();
 ///    let shares: &[i64] = &all_shares[0..reconstruct_share_count];
@@ -44,36 +45,41 @@ use numtheory::*;
 pub struct ShamirSecretSharing {
     /// Maximum number of shares that can be known without exposing the secret.
     pub threshold: usize,
-    /// Number of parts to split the secret into
-    pub parts: usize,
-    /// a prime defining the Zp field we are working in.
+    /// Number of shares to split the secret into.
+    pub share_count: usize,
+    /// Prime defining the Zp field in which computation is taking place.
     pub prime: i64,
 }
 
-/// Small preset settings for tests.
+/// Small preset parameters for tests.
 pub static SHAMIR_5_20: ShamirSecretSharing = ShamirSecretSharing {
     threshold: 5,
-    parts: 20,
+    share_count: 20,
     prime: 41,
 };
 
 impl ShamirSecretSharing {
-    /// Generate `parts` shares from `secret`.
+    /// Minimum number of shares required to reconstruct secret.
+    ///
+    /// For this scheme this is always `threshold + 1`.
+    pub fn reconstruct_limit(&self) -> usize {
+        self.threshold + 1
+    }
+
+    /// Generate `share_count` shares from `secret`.
     pub fn share(&self, secret: i64) -> Vec<i64> {
         let poly = self.sample_polynomial(secret);
         self.evaluate_polynomial(&poly)
     }
 
-    /// Reconstruct the `secret` from a big enough subset of the shares.
+    /// Reconstruct `secret` from a large enough subset of the shares.
     ///
-    /// `indices` and `shares` must be of the same size, and strictly more than
-    /// `threshold` (it will assert if otherwise).
-    ///
-    /// `indices` is the rank of the known shares from the `share` method
-    /// output, while `values` are the actual values of these shares.
+    /// `indices` are the ranks of the known shares as output by the `share` method,
+    /// while `values` are the actual values of these shares.
+    /// Both must have the same number of elements, and at least `reconstruct_limit`.
     pub fn reconstruct(&self, indices: &[usize], shares: &[i64]) -> i64 {
         assert!(shares.len() == indices.len());
-        assert!(shares.len() > self.threshold);
+        assert!(shares.len() >= self.reconstruct_limit());
         // add one to indices to get points
         let points: Vec<i64> = indices.iter().map(|&i| (i as i64) + 1i64).collect();
         lagrange_interpolation_at_zero(&*points, &shares, self.prime)
@@ -82,13 +88,12 @@ impl ShamirSecretSharing {
     fn sample_polynomial(&self, zero_value: i64) -> Vec<i64> {
         // fix the first coefficient (corresponding to the evaluation at zero)
         let mut coefficients = vec![zero_value];
-        // sample the remaining coefficients randomly
-        //  - use secure randomness as per https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
+        // sample the remaining coefficients randomly using secure randomness
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
         let mut rng = rand::OsRng::new().unwrap();
         let random_coefficients: Vec<i64> =
-            (1..self.threshold + 1).map(|_| range.sample(&mut rng)).collect();
+            (0..self.threshold).map(|_| range.sample(&mut rng)).collect();
         coefficients.extend(random_coefficients);
         // return
         coefficients
@@ -96,7 +101,7 @@ impl ShamirSecretSharing {
 
     fn evaluate_polynomial(&self, coefficients: &[i64]) -> Vec<i64> {
         // evaluate at all points
-        (1..self.parts + 1)
+        (1..self.share_count + 1)
             .map(|point| mod_evaluate_polynomial(coefficients, point as i64, self.prime))
             .collect()
     }
@@ -116,7 +121,7 @@ fn test_evaluate_polynomial() {
 fn wikipedia_example() {
     let tss = ShamirSecretSharing {
         threshold: 2,
-        parts: 6,
+        share_count: 6,
         prime: 1613,
     };
 
@@ -132,7 +137,7 @@ fn wikipedia_example() {
 fn test_shamir() {
     let tss = ShamirSecretSharing {
         threshold: 2,
-        parts: 6,
+        share_count: 6,
         prime: 41,
     };
     let secret = 1;
