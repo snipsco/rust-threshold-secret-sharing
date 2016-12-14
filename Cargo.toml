@@ -1,16 +1,19 @@
 [package]
 name = "threshold-secret-sharing"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   "Morten Dahl",
   "Mathieu Poumeyrol <mathieu.poumeyrol@snips.ai>"
 ]
 description = "A pure-Rust implementation of various threshold secret sharing schemes"
 keywords = [
-  "secret_sharing",
+  "secret-sharing",
   "Shamir",
   "packed",
+  "secure-computation",
   "MPC",
+  "multi-party-computation",
+  "crypto",
   "cryptography"
 ]
 homepage = "https://github.com/snipsco/rust-threshold-secret-sharing"
