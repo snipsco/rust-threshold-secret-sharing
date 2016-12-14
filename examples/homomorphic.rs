@@ -43,7 +43,7 @@ fn main() {
 
     // in the following, 'positivise' is used to map (potentially negative)
     // values to their equivalent positive representation in Z_p for usability
-    use tss::numtheory::positivise;
+    use tss::positivise;
 
     // multiply shares_1 and shares_2 point-wise
     let shares_12: Vec<i64> = shares_1.iter().zip(&shares_2).map(|(a, b)| (a * b) % pss.prime).collect();
