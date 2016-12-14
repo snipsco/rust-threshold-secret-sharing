@@ -6,9 +6,9 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
-//! Various number theory utilities functions that are used in the library.
+//! Various number theoretic utility functions used in the library.
 
-/// GCD euclidean recursive implementation. The first member of the returned
+/// Euclidean GCD implementation (recursive). The first member of the returned
 /// triplet is the GCD of `a` and `b`.
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
@@ -55,7 +55,7 @@ pub fn mod_pow(mut x: i64, mut e: u32, prime: i64) -> i64 {
             // odd
             acc = (acc * x) % prime;
         }
-        x = (x * x) % prime;  // waste one of these by having it here but code is simpler (tiny bit)
+        x = (x * x) % prime; // waste one of these by having it here but code is simpler (tiny bit)
         e = e >> 1;
     }
     acc
@@ -75,9 +75,10 @@ fn test_mod_pow() {
 
 /// Compute the 2-radix FFT of `a_coef` in the *Zp* field defined by `prime`.
 ///
-/// `omega` must be a principal root of unity. `omega` degree must be equal
-/// to the `a_coef` length, and must be a power of 2.
+/// `omega` must be a `n`-th principal root of unity,
+/// where `n` is the lenght of `a_coef` as well as a power of 2.
 /// The result will contains the same number of elements.
+#[allow(dead_code)]
 pub fn fft2(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     use fields::Field;
     let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
@@ -122,8 +123,8 @@ fn test_fft2_inverse() {
 
 /// Compute the 3-radix FFT of `a_coef` in the *Zp* field defined by `prime`.
 ///
-/// `omega` must be a principal root of unity. `omega` degree must be equal
-/// to the `a_coef` length, and must be a power of 3.
+/// `omega` must be a `n`-th principal root of unity,
+/// where `n` is the lenght of `a_coef` as well as a power of 3.
 /// The result will contains the same number of elements.
 pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     use fields::Field;
@@ -135,6 +136,7 @@ pub fn fft3(a_coef: &[i64], omega: i64, prime: i64) -> Vec<i64> {
 }
 
 /// Inverse FFT for `fft3`.
+#[allow(dead_code)]
 pub fn fft3_inverse(a_point: &[i64], omega: i64, prime: i64) -> Vec<i64> {
     use fields::Field;
     let zp = ::fields::montgomery::MontgomeryField32::new(prime as u32);
@@ -166,17 +168,16 @@ fn test_fft3_inverse() {
     assert_eq!(a_coef, vec![1, 2, 3, 4, 5, 6, 7, 8, 9])
 }
 
-/// Performs a Lagrange interpolation at origin for a Zp polynomial defined by points.
+/// Performs a Lagrange interpolation in field Zp at the origin
+/// for a polynomial defined by `points` and `values`.
 ///
-/// `points` and `values` are expected to be two arrays of the same size.
-/// `points` contains the evaluation position (aka the "x" values), while
-/// `values` contains the polynomial value at the point (aka y or p(x)).
+/// `points` and `values` are expected to be two arrays of the same size, containing
+/// respectively the evaluation points (x) and the value of the polynomial at those point (p(x)).
 ///
-/// The result is the value of the polynomial at x=0. It is also its
-/// zero-degree coefficient.
+/// The result is the value of the polynomial at x=0. It is also its zero-degree coefficient.
 ///
 /// This is obviously less general than `newton_interpolation_general` as we
-/// only get one single coefficient, but is much faster.
+/// only get a single value, but it is much faster.
 pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64) -> i64 {
     assert_eq!(points.len(), values.len());
     // Lagrange interpolation for point 0
@@ -198,18 +199,16 @@ pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64
     acc
 }
 
-/// Holds together points and newton-interpolated coefficients for fast
-/// evaluation.
+/// Holds together points and Newton-interpolated coefficients for fast evaluation.
 pub struct NewtonPolynomial<'a> {
     points: &'a [i64],
     coefficients: Vec<i64>,
 }
 
 
-/// General case for newton interpolation in Zp.
+/// General case for Newton interpolation in field Zp.
 ///
-/// Given enough `points` and `values` (x and p(x)), find the coefficients for
-/// p(x).
+/// Given enough `points` (x) and `values` (p(x)), find the coefficients for `p`.
 pub fn newton_interpolation_general<'a>(points: &'a [i64],
                                         values: &[i64],
                                         prime: i64)
@@ -296,11 +295,10 @@ fn test_compute_newton_coefficients() {
     assert_eq!(coefficients, vec![8, 8, -10, 4, 0]);
 }
 
-/// Arrange all elements of `values` to be between 0 and prime to ease equality
-/// tests.
-pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
+/// Map `values` from `[-n/2, n/2)` to `[0, n)`.
+pub fn positivise(values: &[i64], n: i64) -> Vec<i64> {
     values.iter()
-        .map(|&value| if value < 0 { value + prime } else { value })
+        .map(|&value| if value < 0 { value + n } else { value })
         .collect()
 }
 
@@ -321,7 +319,7 @@ pub fn positivise(values: &[i64], prime: i64) -> Vec<i64> {
 //     assert_eq!(mod_evaluate_polynomial_naive(&poly, point, prime), 4);
 // }
 
-/// Evaluation of a polynomial on Zp at one given point using Horner's method.
+/// Evaluate polynomial given by `coefficients` at `point` in Zp using Horner's method.
 pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> i64 {
     // evaluate using Horner's rule
     //  - to combine with fold we consider the coefficients in reverse order
