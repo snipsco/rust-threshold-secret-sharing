@@ -43,12 +43,12 @@ fn main() {
 
     // in the following, 'positivise' is used to map (potentially negative)
     // values to their equivalent positive representation in Z_p for usability
-    use tss::numtheory::positivise;
+    use tss::positivise;
 
     // multiply shares_1 and shares_2 point-wise
     let shares_12: Vec<i64> = shares_1.iter().zip(&shares_2).map(|(a, b)| (a * b) % pss.prime).collect();
-    // ... and reconstruct product, using double reconstruction limit (minus one)
-    let shares_12_reconstruct_limit = pss.reconstruct_limit() * 2 - 1;
+    // ... and reconstruct product, using double reconstruction limit
+    let shares_12_reconstruct_limit = pss.reconstruct_limit() * 2;
     let foo: Vec<usize> = (0..shares_12_reconstruct_limit).collect();
     let bar = &shares_12[0..shares_12_reconstruct_limit];
     let secrets_12 = pss.reconstruct(&foo, bar);
@@ -61,8 +61,8 @@ fn main() {
 
     // multiply shares_3 and shares_4 point-wise
     let shares_34: Vec<i64> = shares_3.iter().zip(&shares_4).map(|(a, b)| (a * b) % pss.prime).collect();
-    // ... and reconstruct product, using double reconstruction limit (minus one)
-    let shares_34_reconstruct_limit = pss.reconstruct_limit() * 2 - 1;
+    // ... and reconstruct product, using double reconstruction limit
+    let shares_34_reconstruct_limit = pss.reconstruct_limit() * 2;
     let foo: Vec<usize> = (0..shares_34_reconstruct_limit).collect();
     let bar = &shares_34[0..shares_34_reconstruct_limit];
     let secrets_34 = pss.reconstruct(&foo, bar);
@@ -75,7 +75,7 @@ fn main() {
 
     // multiply shares_sum12 and shares_34 point-wise
     let shares_1234product: Vec<i64> = shares_12.iter().zip(&shares_34).map(|(a, b)| (a * b) % pss.prime).collect();
-    // ... and reconstruct product, using double reconstruction limit (minus one)
+    // ... and reconstruct product, using double reconstruction limit
     let shares_1234product_reconstruct_limit = shares_1234product.len();
     let foo: Vec<usize> = (0..shares_1234product_reconstruct_limit).collect();
     let bar = &shares_1234product[0..shares_1234product_reconstruct_limit];
@@ -91,7 +91,7 @@ fn main() {
     // add shares_12 and shares_34 point-wise
     let shares_1234sum: Vec<i64> = shares_12.iter().zip(&shares_34).map(|(a, b)| (a + b) % pss.prime).collect();
     // ... and reconstruct sum, using same reconstruction limit as inputs
-    let shares_1234sum_reconstruct_limit = pss.reconstruct_limit() * 2 - 1;
+    let shares_1234sum_reconstruct_limit = pss.reconstruct_limit() * 2;
     let foo: Vec<usize> = (0..shares_1234sum_reconstruct_limit).collect();
     let bar = &shares_1234sum[0..shares_1234sum_reconstruct_limit];
     let secrets_1234sum = pss.reconstruct(&foo, bar);

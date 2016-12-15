@@ -6,63 +6,63 @@
 // option. All files in the project carrying such notice may not be copied,
 // modified, or distributed except according to those terms.
 
-//! Packed variant of secret sharing, allowing to share efficiently several values together.
+//! Packed (or ramp) variant of Shamir secret sharing,
+//! allowing efficient sharing of several secrets together.
 
 use numtheory::{mod_pow, fft2_inverse, fft3};
 use rand;
 
-/// Packed variant of the secret sharing.
+/// Parameters for the packed variant of Shamir secret sharing,
+/// specifying number of secrets shared together, total number of shares, and privacy threshold.
 ///
-/// In Shamir scheme, one single value (one number) is set as the 0-th
-/// coefficient of a polynomial, and the evaluation of this polynomial
-/// at different point is shared to different sharees. Once enough shares
-/// (degree+1) are put together, the polynomial can be uniquely determined
-/// and evaluated in 0 to reconstruct the secret.
+/// This scheme generalises
+/// [Shamir's scheme](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
+/// by simultaneously sharing several secrets, at the expense of leaving a gap
+/// between the privacy threshold and the reconstruction limit.
 ///
-/// The idea behing the packed scheme is to "fix" more values of the
-/// polynomial to represent more secret values. We could for instance pick
-/// evaluation at 0, -1, -2 to encode three values, find a polynomial of
-/// high-enough degree going through these points, then evaluate it on 1, 2...
-/// to generate enough shares.
+/// The Fast Fourier Transform is used for efficiency reasons,
+/// allowing most operations run to quasilinear time `O(n.log(n))` in `share_count`.
+/// An implication of this is that secrets and shares are positioned on positive powers of
+/// respectively an `n`-th and `m`-th principal root of unity,
+/// where `n` is a power of 2 and `m` a power of 3.
 ///
-/// But operations on polynomial are expensive (quadratic) in the general case.
-/// By careful picking of evaluation points and using Fast Fourier Transform,
-/// most of our operation can be kept under `O(n.log(n))`.
+/// As a result there exist several constraints between the various parameters:
 ///
-/// * secrets are positioned on 2^n roots of unity
-/// * shares are read on 3^n roots of unity
-///
-/// Except from the evaluation in `1`, a point that we do not use, these two
-/// sets are distinct, so no share exposes coincidentaly any secret.
-///
-/// So there exist constraints between the various parameters:
-///
-/// * `prime` must be big enough to handle the shared values
-/// * `secret_count + threshold + 1` (aka reconstruct_limit) must be a power of 2
+/// * `prime` must be a prime large enough to hold the secrets we plan to share
+/// * `share_count` must be at least `secret_count + threshold` (the reconstruction limit)
+/// * `secret_count + threshold + 1` must be a power of 2
 /// * `share_count + 1` must be a power of 3
-/// * `omega_secrets` must be a `reconstruct_limit()`-th root of unity
-/// * `omega_shares` must be a `(share_count+1)`-th root of unity
+/// * `omega_secrets` must be a `(secret_count + threshold + 1)`-th root of unity
+/// * `omega_shares` must be a `(share_count + 1)`-th root of unity
+///
+/// An optional `paramgen` feature provides methods for finding suitable parameters satisfying
+/// these somewhat complex requirements, in addition to several fixed parameter choices.
 #[derive(Debug,Copy,Clone,PartialEq)]
 pub struct PackedSecretSharing {
+
     // abstract properties
-    /// security threshold
+
+    /// Maximum number of shares that can be known without exposing the secrets
+    /// (privacy threshold).
     pub threshold: usize,
-    /// number of shares to generate
+    /// Number of shares to split the secrets into.
     pub share_count: usize,
-    /// number of secrets in each share
+    /// Number of secrets to share together.
     pub secret_count: usize,
 
     // implementation configuration
-    /// prime field to use
+
+    /// Prime defining the Zp field in which computation is taking place.
     pub prime: i64,
-    /// `reconstruct_limit`-th principal root of unity in Z_p
+    /// `m`-th principal root of unity in Zp, where `m = secret_count + threshold + 1`
+    /// must be a power of 2.
     pub omega_secrets: i64,
-    /// `secret_count+1`-th principal root of unity in Z_p
+    /// `n`-th principal root of unity in Zp, where `n = share_count + 1` must be a power of 3.
     pub omega_shares: i64,
 }
 
-/// Example of tiny PSS settings, for sharing 3 secrets 8 ways, with
-/// a security threshold of 4.
+/// Example of tiny PSS settings, for sharing 3 secrets into 8 shares, with
+/// a privacy threshold of 4.
 pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 8,
@@ -72,8 +72,8 @@ pub static PSS_4_8_3: PackedSecretSharing = PackedSecretSharing {
     omega_shares: 150,
 };
 
-/// Example of small PSS settings, for sharing 3 secrets 26 ways, with
-/// a security threshold of 4.
+/// Example of small PSS settings, for sharing 3 secrets into 26 shares, with
+/// a privacy threshold of 4.
 pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
     threshold: 4,
     share_count: 26,
@@ -83,8 +83,8 @@ pub static PSS_4_26_3: PackedSecretSharing = PackedSecretSharing {
     omega_shares: 17,
 };
 
-/// Example of PSS settings, for sharing 100 secrets 728 ways, with
-/// a security threshold of 156.
+/// Example of PSS settings, for sharing 100 secrets into 728 shares, with
+/// a privacy threshold of 155.
 pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 728,
@@ -94,8 +94,8 @@ pub static PSS_155_728_100: PackedSecretSharing = PackedSecretSharing {
     omega_shares: 610121,
 };
 
-/// Example of PSS settings, for sharing 100 secrets 19682 ways, with
-/// a security threshold of 156.
+/// Example of PSS settings, for sharing 100 secrets into 19682 shares, with
+/// a privacy threshold of 155.
 pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
     threshold: 155,
     share_count: 19682,
@@ -106,27 +106,29 @@ pub static PSS_155_19682_100: PackedSecretSharing = PackedSecretSharing {
 };
 
 impl PackedSecretSharing {
-    /// minimum number of shares required to reconstruct secret
+    /// Minimum number of shares required to reconstruct secrets.
     ///
-    /// (secret_count + threshold + 1)
+    /// For this scheme this is always `secret_count + threshold`
     pub fn reconstruct_limit(&self) -> usize {
-        self.secret_count + self.threshold + 1
+        self.threshold + self.secret_count
     }
 
-    /// Computes shares for the vector of secrets.
+    /// Generate `share_count` shares for the `secrets` vector.
     ///
-    /// It is assumed that `secret` is equal in len to `secret_count` (the
-    /// code will assert otherwise). It is safe to pad with anything, including
-    /// zeros.
+    /// The length of `secrets` must be `secret_count`.
+    /// It is safe to pad with anything, including zeros.
     pub fn share(&self, secrets: &[i64]) -> Vec<i64> {
         assert_eq!(secrets.len(), self.secret_count);
         // sample polynomial
         let mut poly = self.sample_polynomial(secrets);
+        assert_eq!(poly.len(), self.reconstruct_limit() + 1);
         // .. and extend it
-        poly.extend(vec![0; self.share_count + 1 - self.reconstruct_limit()]);
+        poly.extend(vec![0; self.share_count - self.reconstruct_limit()]);
+        assert_eq!(poly.len(), self.share_count + 1);
         // evaluate polynomial to generate shares
         let mut shares = self.evaluate_polynomial(poly);
-        // .. but remove first element since it should not be used as a share (it's always 1)
+        // .. but remove first element since it should not be used as a share (it's always zero)
+        assert_eq!(shares[0], 0);
         shares.remove(0);
         // return
         assert_eq!(shares.len(), self.share_count);
@@ -134,9 +136,8 @@ impl PackedSecretSharing {
     }
 
     fn sample_polynomial(&self, secrets: &[i64]) -> Vec<i64> {
-        // sample randomness
-        //  - for cryptographic use we should use OsRng as dictated here
-        //    https://doc.rust-lang.org/rand/rand/index.html#cryptographic-security
+        assert_eq!(secrets.len(), self.secret_count);
+        // sample randomness using secure randomness
         use rand::distributions::Sample;
         let mut range = rand::distributions::range::Range::new(0, self.prime - 1);
         let mut rng = rand::OsRng::new().unwrap();
@@ -144,18 +145,19 @@ impl PackedSecretSharing {
             (0..self.threshold).map(|_| range.sample(&mut rng) as i64).collect();
         // recover polynomial
         let coefficients = self.recover_polynomial(secrets, randomness);
+        assert_eq!(coefficients.len(), self.reconstruct_limit() + 1);
         coefficients
     }
 
     fn recover_polynomial(&self, secrets: &[i64], randomness: Vec<i64>) -> Vec<i64> {
-        // fix the value corresponding to point 1
+        // fix the value corresponding to point 1 (zero)
         let mut values: Vec<i64> = vec![0];
         // let the subsequent values correspond to the secrets
         values.extend(secrets);
         // fill in with random values
         values.extend(randomness);
         // run backward FFT to recover polynomial in coefficient representation
-        assert_eq!(values.len(), self.reconstruct_limit());
+        assert_eq!(values.len(), self.reconstruct_limit() + 1);
         let coefficients = fft2_inverse(&values, self.omega_secrets, self.prime);
         coefficients
     }
@@ -166,24 +168,28 @@ impl PackedSecretSharing {
         points
     }
 
-    /// Reconstruct the secret vector from enough shares.
+    /// Reconstruct the secrets from a large enough subset of the shares.
     ///
-    /// `indices` and `shares` must be of the same size, and strictly more than
-    /// `threshold` (it will assert if otherwise).
+    /// `indices` are the ranks of the known shares as output by the `share` method,
+    ///  while `values` are the actual values of these shares.
+    /// Both must have the same number of elements, and at least `reconstruct_limit`.
     ///
-    /// `indices` is the rank of the known shares from the `share` method
-    /// output, while `values` are the actual values of these shares.
-    ///
-    /// The result is of length `secret_count`.
+    /// The resulting vector is of length `secret_count`.
     pub fn reconstruct(&self, indices: &[usize], shares: &[i64]) -> Vec<i64> {
         assert!(shares.len() == indices.len());
         assert!(shares.len() >= self.reconstruct_limit());
-        let shares_points: Vec<i64> =
-            indices.iter().map(|&x| mod_pow(self.omega_shares, x as u32 + 1, self.prime)).collect();
+        let mut points: Vec<i64> =
+            indices.iter()
+            .map(|&x| mod_pow(self.omega_shares, x as u32 + 1, self.prime))
+            .collect();
+        let mut values = shares.to_vec();
+        // insert missing value for point 1 (zero)
+        points.insert(0, 1);
+        values.insert(0, 0);
         // interpolate using Newton's method
         use numtheory::{newton_interpolation_general, newton_evaluate};
         // TODO optimise by using Newton-equally-space variant
-        let poly = newton_interpolation_general(&shares_points, &shares, self.prime);
+        let poly = newton_interpolation_general(&points, &values, self.prime);
         // evaluate at omega_secrets points to recover secrets
         // TODO optimise to avoid re-computation of power
         let secrets = (1..self.reconstruct_limit())
@@ -208,19 +214,26 @@ mod tests {
         let secrets = vec![1, 2, 3];
         let randomness = vec![8, 8, 8, 8];  // use fixed randomness
         let poly = pss.recover_polynomial(&secrets, randomness);
-        assert_eq!(positivise(&poly, pss.prime), positivise(&[113, -382, -172, 267, -325, 432, 388, -321], pss.prime));
+        assert_eq!(
+            positivise(&poly, pss.prime),
+            positivise(&[113, -382, -172, 267, -325, 432, 388, -321], pss.prime)
+        );
     }
 
     #[test]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn test_evaluate_polynomial() {
         let ref pss = PSS_4_26_3;
-        let poly = vec![113, 51, 261, 267, 108, 432, 388, 112, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let points = positivise(&pss.evaluate_polynomial(poly), pss.prime);
-        assert_eq!(points, vec![ 0, 77, 230, 91, 286, 179, 337, 83, 212, 88,
-                        406, 58, 425, 345, 350, 336, 430, 404, 51, 60, 305,
-                        395, 84, 156, 160, 112, 422]);
+        let poly = vec![113,  51, 261, 267, 108, 432, 388, 112,   0,
+                          0,   0,   0,   0,   0,   0,   0,   0,   0,
+                          0,   0,   0,   0,   0,   0,   0,   0,   0];
+        let points = &pss.evaluate_polynomial(poly);
+        assert_eq!(
+            positivise(points, pss.prime),
+            vec![   0, 77, 230,  91, 286, 179, 337,  83, 212,
+                   88, 406, 58, 425, 345, 350, 336, 430, 404,
+                   51, 60, 305, 395,  84, 156, 160, 112, 422]
+        );
     }
 
     #[test]
@@ -274,6 +287,7 @@ mod tests {
         // .. and for only sufficient shares
         let indices: Vec<usize> = (0..pss.reconstruct_limit()).collect();
         let recovered_secrets = pss.reconstruct(&indices, &shares[0..pss.reconstruct_limit()]);
+        print!("lenght is {:?}", indices.len());
         assert_eq!(positivise(&recovered_secrets, pss.prime), secrets);
     }
 
@@ -313,8 +327,8 @@ mod tests {
         let shares_product: Vec<i64> =
             shares_1.iter().zip(shares_2).map(|(a, b)| (a * b) % pss.prime).collect();
 
-        // reconstruct product, using double reconstruction limit (minus one)
-        let reconstruct_limit = pss.reconstruct_limit() * 2 - 1;
+        // reconstruct product, using double reconstruction limit
+        let reconstruct_limit = pss.reconstruct_limit() * 2;
         let indices: Vec<usize> = (0..reconstruct_limit).collect();
         let shares = &shares_product[0..reconstruct_limit];
         let recovered_secrets = pss.reconstruct(&indices, shares);
@@ -327,7 +341,9 @@ mod tests {
 
 
 #[cfg(feature = "paramgen")]
-pub mod paramgen {
+mod paramgen {
+
+    //! Optional helper methods for parameter generation
 
     extern crate primal;
 
@@ -348,8 +364,7 @@ pub mod paramgen {
 
     #[test]
     fn test_check_prime_form() {
-        assert_eq!(primal::Primes::all().find(|p| check_prime_form(198, 8, 9, *p)).unwrap(),
-                   433);
+        assert_eq!(primal::Primes::all().find(|p| check_prime_form(198, 8, 9, *p)).unwrap(), 433);
     }
 
     fn factor(p: usize) -> Vec<usize> {
@@ -419,8 +434,9 @@ pub mod paramgen {
         assert_eq!(find_roots(2usize.pow(3), 3usize.pow(3), 433, 5), (354, 17));
     }
 
-    pub fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
-        let (prime, g) = find_field(min_size, n, m).unwrap(); // TODO settle option business once and for all (don't remember it as needed)
+    fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
+        // TODO settle option business once and for all (don't remember it as needed)
+        let (prime, g) = find_field(min_size, n, m).unwrap();
         let (omega_secrets, omega_shares) = find_roots(n, m, prime, g);
         (prime, omega_secrets, omega_shares)
     }
@@ -433,26 +449,54 @@ pub mod paramgen {
                    (433, 354, 17));
     }
 
+    fn is_power_of(x: usize, e: usize) -> bool {
+        let power = (x as f64).log(e as f64).floor() as u32;
+        e.pow(power) == x
+    }
+
+    #[test]
+    fn test_is_power_of() {
+        assert_eq!(is_power_of(4, 2), true);
+        assert_eq!(is_power_of(5, 2), false);
+        assert_eq!(is_power_of(6, 2), false);
+        assert_eq!(is_power_of(7, 2), false);
+        assert_eq!(is_power_of(8, 2), true);
+
+        assert_eq!(is_power_of(4, 3), false);
+        assert_eq!(is_power_of(5, 3), false);
+        assert_eq!(is_power_of(6, 3), false);
+        assert_eq!(is_power_of(7, 3), false);
+        assert_eq!(is_power_of(8, 3), false);
+        assert_eq!(is_power_of(9, 3), true);
+    }
+
     use super::PackedSecretSharing;
 
     impl PackedSecretSharing {
+
+        /// Find suitable parameters with as small a prime field as possible.
+        pub fn new(threshold: usize,
+                   secret_count: usize,
+                   share_count: usize)
+                   -> PackedSecretSharing {
+            let min_size = share_count + secret_count + threshold + 1;
+            Self::new_with_min_size(threshold, secret_count, share_count, min_size)
+        }
+
+        /// Find suitable parameters with a prime field of at least the specified size.
         pub fn new_with_min_size(threshold: usize,
                                  secret_count: usize,
                                  share_count: usize,
                                  min_size: usize)
                                  -> PackedSecretSharing {
-            let n = threshold + secret_count + 1;
-            let m = share_count + 1;
 
-            let two_power = (n as f64).log(2f64).floor() as u32;
-            assert!(2usize.pow(two_power) == n);
+            let m = threshold + secret_count + 1;
+            let n = share_count + 1;
+            assert!(is_power_of(m, 2));
+            assert!(is_power_of(n, 3));
+            assert!(min_size >= share_count + secret_count + threshold + 1);
 
-            let three_power = (m as f64).log(3f64).floor() as u32;
-            assert!(3usize.pow(three_power) == m);
-
-            assert!(min_size >= share_count + secret_count + 1);
-
-            let (prime, omega_secrets, omega_shares) = generate_parameters(min_size, n, m);
+            let (prime, omega_secrets, omega_shares) = generate_parameters(min_size, m, n);
 
             PackedSecretSharing {
                 threshold: threshold,
@@ -462,14 +506,6 @@ pub mod paramgen {
                 omega_secrets: omega_secrets,
                 omega_shares: omega_shares,
             }
-        }
-
-        pub fn new(threshold: usize,
-                   secret_count: usize,
-                   share_count: usize)
-                   -> PackedSecretSharing {
-            let min_size = share_count + secret_count + threshold + 1;
-            Self::new_with_min_size(threshold, secret_count, share_count, min_size)
         }
     }
 

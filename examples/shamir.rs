@@ -11,7 +11,7 @@ fn main() {
 
     let ref tss = tss::shamir::ShamirSecretSharing {
         threshold: 9,
-        parts: 20,
+        share_count: 20,
         prime: 41  // any large enough prime will do
     };
 
@@ -19,7 +19,7 @@ fn main() {
     let all_shares = tss.share(secret);
 
     let reconstruct_share_count = 10;
-    assert!(reconstruct_share_count > tss.threshold);
+    assert!(reconstruct_share_count >= tss.reconstruct_limit());
 
     let indices: Vec<usize> = (0..reconstruct_share_count).collect();
     let shares: &[i64] = &all_shares[0..reconstruct_share_count];
