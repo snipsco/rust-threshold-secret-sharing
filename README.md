@@ -36,9 +36,9 @@ for the Shamir example below.
 ## Shamir sharing
 Using the Shamir scheme is relatively straight-forward.
 
-When choosing parameters, `reconstruction_limit` and `parts` must be chosen to satisfy security requirements, and `prime` must be large enough to correctly encode the value to be shared (and such that `prime >= parts + 1`). The implicit security threshold is `reconstruction_limit-1`;
+When choosing parameters, `threshold` and `share_count` must be chosen to satisfy security requirements, and `prime` must be large enough to correctly encode the value to be shared (and such that `prime >= share_count + 1`).
 
-When reconstructing the secret, indices must be explicitly provided to identify the shares; these correspond to the indices the shares had in the array returned by `share()`.
+When reconstructing the secret, indices must be explicitly provided to identify the shares; these correspond to the indices the shares had in the vector returned by `share()`.
 
 ```rust
 extern crate threshold_secret_sharing as tss;
@@ -46,22 +46,25 @@ extern crate threshold_secret_sharing as tss;
 fn main() {
   // create instance of the Shamir scheme
   let ref tss = tss::shamir::ShamirSecretSharing {
-    reconstruction_limit: 10,   // how many shares must be known to reconstruct
-    parts: 20,                  // number of shares to generate
-    prime: 41                   // prime field to use
+    threshold: 8,           // privacy threshold
+    share_count: 20,        // total number of shares to generate
+    prime: 41               // prime field to use
   };
 
-  // generate shares for secret
   let secret = 5;
+
+  // generate shares for secret
   let all_shares = tss.share(secret);
 
-  // artificially remove some of the shares: keep only the first 10
-  let indices: Vec<usize> = (0..10).collect();
-  let shares = &all_shares[0..10];
+  // artificially remove some of the shares
+  let number_of_recovered_shared = 10;
+  assert!(number_of_recovered_shared >= tss.reconstruct_limit());
+  let recovered_indices: Vec<usize> = (0..number_of_recovered_shared).collect();
+  let recovered_shares: &[i64] = &all_shares[0..number_of_recovered_shared];
 
   // reconstruct using remaining subset of shares
-  let recovered_secret = tss.reconstruct(&indices, shares);
-  assert_eq!(recovered_secret, 5);
+  let reconstructed_secret = tss.reconstruct(&recovered_indices, recovered_shares);
+  assert_eq!(reconstructed_secret, secret);
 }
 ```
 
