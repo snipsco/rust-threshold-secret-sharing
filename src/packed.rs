@@ -340,8 +340,9 @@ mod tests {
 }
 
 
+#[doc(hidden)]
 #[cfg(feature = "paramgen")]
-mod paramgen {
+pub mod paramgen {
 
     //! Optional helper methods for parameter generation
 
@@ -434,7 +435,8 @@ mod paramgen {
         assert_eq!(find_roots(2usize.pow(3), 3usize.pow(3), 433, 5), (354, 17));
     }
 
-    fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
+    #[doc(hidden)]
+    pub fn generate_parameters(min_size: usize, n: usize, m: usize) -> (i64, i64, i64) {
         // TODO settle option business once and for all (don't remember it as needed)
         let (prime, g) = find_field(min_size, n, m).unwrap();
         let (omega_secrets, omega_shares) = find_roots(n, m, prime, g);
