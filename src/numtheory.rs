@@ -10,6 +10,10 @@
 
 /// Euclidean GCD implementation (recursive). The first member of the returned
 /// triplet is the GCD of `a` and `b`.
+
+use std::convert::From;
+use std::i64;
+
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
         (a, 1, 0)
@@ -35,7 +39,7 @@ pub fn mod_inverse(k: i64, prime: i64) -> i64 {
     } else {
         gcd(prime, k2).2
     };
-    (prime + r) % prime
+    ((prime as i128 + r as i128) % prime as i128) as i64
 }
 
 #[test]
@@ -181,6 +185,7 @@ fn test_fft3_inverse() {
 pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64) -> i64 {
     assert_eq!(points.len(), values.len());
     // Lagrange interpolation for point 0
+    let prim_i128 = prime as i128;
     let mut acc = 0i64;
     for i in 0..values.len() {
         let xi = points[i];
@@ -190,11 +195,12 @@ pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64
         for j in 0..values.len() {
             if j != i {
                 let xj = points[j];
-                num = (num * xj) % prime;
-                denum = (denum * (xj - xi)) % prime;
+                num = ((num as i128 * xj as i128) % prim_i128) as i64;
+                denum = ((denum as i128 * (xj as i128 - xi as i128)) % prim_i128) as i64;
             }
         }
-        acc = (acc + yi * num * mod_inverse(denum, prime)) % prime;
+        let yi_num_mod = (yi as i128 % prim_i128 * num as i128 % prim_i128 * mod_inverse(denum, prime) as i128 % prim_i128) % prim_i128;
+        acc = ((acc as i128 % prim_i128 + yi_num_mod) % prim_i128) as i64;
     }
     acc
 }
@@ -327,7 +333,15 @@ pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> 
     // manually split due to fold insisting on an initial value
     let head = *reversed_coefficients.next().unwrap();
     let tail = reversed_coefficients;
-    tail.fold(head, |partial, coef| (partial * point + coef) % prime)
+    tail.fold(
+        head,
+        |partial, coef|
+            (
+                (
+                    (partial as i128) * (point as i128) + i128::from(*coef)
+                ) % (prime as i128)
+            ) as i64
+    )
 }
 
 #[test]
@@ -336,4 +350,17 @@ fn test_mod_evaluate_polynomial() {
     let point = 5;
     let prime = 17;
     assert_eq!(mod_evaluate_polynomial(&poly, point, prime), 4);
+}
+
+#[test]
+fn test_mod_evaluate_polynomial_boundary() {
+    let base: i64 = 2;
+    let prime = i64::MAX - 24;
+    let poly = vec![
+        1,
+        i64::MAX - 164,
+        i64::MAX - 163
+    ];
+    let point = 2;
+    assert_eq!(mod_evaluate_polynomial(&poly, point, prime), prime - 835);
 }
