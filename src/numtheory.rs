@@ -39,7 +39,7 @@ pub fn mod_inverse(k: i64, prime: i64) -> i64 {
     } else {
         gcd(prime, k2).2
     };
-    (prime + r) % prime
+    ((prime as i128 + r as i128) % prime as i128) as i64
 }
 
 #[test]
@@ -185,6 +185,7 @@ fn test_fft3_inverse() {
 pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64) -> i64 {
     assert_eq!(points.len(), values.len());
     // Lagrange interpolation for point 0
+    let prim_i128 = prime as i128;
     let mut acc = 0i64;
     for i in 0..values.len() {
         let xi = points[i];
@@ -194,11 +195,12 @@ pub fn lagrange_interpolation_at_zero(points: &[i64], values: &[i64], prime: i64
         for j in 0..values.len() {
             if j != i {
                 let xj = points[j];
-                num = (num * xj) % prime;
-                denum = (denum * (xj - xi)) % prime;
+                num = ((num as i128 * xj as i128) % prim_i128) as i64;
+                denum = ((denum as i128 * (xj as i128 - xi as i128)) % prim_i128) as i64;
             }
         }
-        acc = (acc + yi * num * mod_inverse(denum, prime)) % prime;
+        let yi_num_mod = (yi as i128 % prim_i128 * num as i128 % prim_i128 * mod_inverse(denum, prime) as i128 % prim_i128) % prim_i128;
+        acc = ((acc as i128 % prim_i128 + yi_num_mod) % prim_i128) as i64;
     }
     acc
 }
