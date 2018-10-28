@@ -10,6 +10,10 @@
 
 /// Euclidean GCD implementation (recursive). The first member of the returned
 /// triplet is the GCD of `a` and `b`.
+
+use std::convert::From;
+use std::i64;
+
 pub fn gcd(a: i64, b: i64) -> (i64, i64, i64) {
     if b == 0 {
         (a, 1, 0)
@@ -327,7 +331,15 @@ pub fn mod_evaluate_polynomial(coefficients: &[i64], point: i64, prime: i64) -> 
     // manually split due to fold insisting on an initial value
     let head = *reversed_coefficients.next().unwrap();
     let tail = reversed_coefficients;
-    tail.fold(head, |partial, coef| (partial * point + coef) % prime)
+    tail.fold(
+        head,
+        |partial, coef|
+            (
+                (
+                    (partial as i128) * (point as i128) + i128::from(*coef)
+                ) % (prime as i128)
+            ) as i64
+    )
 }
 
 #[test]
@@ -336,4 +348,17 @@ fn test_mod_evaluate_polynomial() {
     let point = 5;
     let prime = 17;
     assert_eq!(mod_evaluate_polynomial(&poly, point, prime), 4);
+}
+
+#[test]
+fn test_mod_evaluate_polynomial_boundary() {
+    let base: i64 = 2;
+    let prime = i64::MAX - 24;
+    let poly = vec![
+        1,
+        i64::MAX - 164,
+        i64::MAX - 163
+    ];
+    let point = 2;
+    assert_eq!(mod_evaluate_polynomial(&poly, point, prime), prime - 835);
 }
